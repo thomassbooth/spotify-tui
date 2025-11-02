@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -9,7 +10,8 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
-	"github.com/thomassbooth/spotify-tui/internal/auth"
+	"github.com/thomassbooth/spotify-tui/internal/client/auth"
+	"github.com/thomassbooth/spotify-tui/internal/client/spotify"
 )
 
 func main() {
@@ -39,5 +41,16 @@ func main() {
 
 	fmt.Println("✓ Successfully authenticated!", token)
 
-	// Create Spotify client with the token
+	client := spotify.NewClient(token)
+	rawJSON, err := client.Get(context.Background(), "/me", nil)
+	if err != nil {
+		log.Fatalf("Spotify request failed: %v", err)
+	}
+
+	// ------------------------------------------------------------------
+	// 6. Print results
+	fmt.Println("\n--- Raw JSON response ---")
+	pretty, _ := json.MarshalIndent(json.RawMessage(rawJSON), "", "  ")
+	fmt.Println(string(pretty))
+
 }
