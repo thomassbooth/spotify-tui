@@ -38,6 +38,27 @@ func (client *Client) Get(ctx context.Context, path string, params interface{}) 
 
 }
 
+func (client *Client) Post(ctx context.Context, path string, params, body interface{}) ([]byte, error) {
+
+	res, err := client.do(ctx, http.MethodPost, path, params, body)
+
+	return res, err
+}
+
+func (client *Client) Put(ctx context.Context, path string, params, body interface{}) ([]byte, error) {
+
+	res, err := client.do(ctx, http.MethodPut, path, params, body)
+
+	return res, err
+}
+
+func (client *Client) Delete(ctx context.Context, path string, params, body interface{}) ([]byte, error) {
+
+	res, err := client.do(ctx, http.MethodDelete, path, params, body)
+
+	return res, err
+}
+
 func (client *Client) do(ctx context.Context, method, path string, params, body interface{}) ([]byte, error) {
 	url := baseURL + path
 

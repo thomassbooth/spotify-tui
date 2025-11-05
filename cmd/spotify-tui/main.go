@@ -2,16 +2,17 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/joho/godotenv"
 	"github.com/thomassbooth/spotify-tui/internal/client/auth"
 	"github.com/thomassbooth/spotify-tui/internal/client/spotify"
+	"github.com/thomassbooth/spotify-tui/internal/view"
 )
 
 func main() {
@@ -42,15 +43,19 @@ func main() {
 	fmt.Println("✓ Successfully authenticated!", token)
 
 	client := spotify.NewClient(token)
-	rawJSON, err := client.Get(context.Background(), "/me", nil)
-	if err != nil {
-		log.Fatalf("Spotify request failed: %v", err)
-	}
+	ctx := context.Background()
 
+	playbackState, err := client.GetCurrentPlayback(ctx)
+
+	fmt.Println('\n')
+	fmt.Println(playbackState.Track.Name)
+
+	p := tea.NewProgram(view.NewDashboard())
+
+	if _, err := p.Run(); err != nil {
+		fmt.Println("err", err)
+	}
 	// ------------------------------------------------------------------
 	// 6. Print results
-	fmt.Println("\n--- Raw JSON response ---")
-	pretty, _ := json.MarshalIndent(json.RawMessage(rawJSON), "", "  ")
-	fmt.Println(string(pretty))
 
 }
