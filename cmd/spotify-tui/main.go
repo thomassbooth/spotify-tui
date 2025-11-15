@@ -56,7 +56,7 @@ func main() {
 		fmt.Println(playbackState.Track.Name)
 	}
 
-	p := tea.NewProgram(view.NewDashboard())
+	p := tea.NewProgram(view.NewPage())
 
 	if _, err := p.Run(); err != nil {
 		fmt.Println("err")
