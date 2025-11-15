@@ -48,12 +48,18 @@ func main() {
 	playbackState, err := client.GetCurrentPlayback(ctx)
 
 	fmt.Println('\n')
-	fmt.Println(playbackState.Track.Name)
+
+	fmt.Println('\n')
+	if playbackState == nil || playbackState.Track.ID == "" {
+		fmt.Println("No track is currently playing.")
+	} else {
+		fmt.Println(playbackState.Track.Name)
+	}
 
 	p := tea.NewProgram(view.NewDashboard())
 
 	if _, err := p.Run(); err != nil {
-		fmt.Println("err", err)
+		fmt.Println("err")
 	}
 	// ------------------------------------------------------------------
 	// 6. Print results
