@@ -6,6 +6,7 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/thomassbooth/spotify-tui/internal/service"
 )
 
 var defaultKeyMap = struct {
@@ -29,36 +30,30 @@ func (i sidebarItem) FilterValue() string { return string(i) }
 // 2. Sidebar component (sub-component, NOT a full tea.Model)
 // ---------------------------------------------------------------------
 type Sidebar struct {
-	list    list.Model
-	focused bool
-	bus     *MessageBus
+	list            list.Model
+	focused         bool
+	bus             *MessageBus
+	playlistService *service.PlaylistService
 }
 
 // NewSidebar creates a ready-to-use sidebar
-func NewSidebar(bus *MessageBus) *Sidebar {
+func NewSidebar(bus *MessageBus, playlistSevice *service.PlaylistService) *Sidebar {
 	const width = 22 // fixed width you asked for
+	playlists, _ := playlistSevice.GetPlaylists()
 
-	items := []list.Item{
-		sidebarItem("Library"),
-		sidebarItem("Search"),
-		sidebarItem("Playlists"),
-		sidebarItem("Browse"),
-		sidebarItem("Radio"),
-		sidebarItem("Your Episodes"),
-		sidebarItem("Liked Songs"),
-		sidebarItem("Albums"),
-		sidebarItem("Artists"),
-		// add as many as you want – scrolling works automatically
+	lists := make([]list.Item, len(playlists))
+	for i, p := range playlists {
+		lists[i] = sidebarItem(p.Name)
 	}
 
 	// Default delegate already draws a nice scrollbar on the right
 	delegate := list.NewDefaultDelegate()
-	l := list.New(items, delegate, width, 0)
+	l := list.New(lists, delegate, width, 0)
 	l.Title = "Spotify"
 	l.SetShowHelp(false)
 	l.SetShowStatusBar(false)
 
-	return &Sidebar{list: l, focused: false, bus: bus}
+	return &Sidebar{list: l, focused: false, bus: bus, playlistService: playlistSevice}
 }
 
 func (s *Sidebar) Deselect() {

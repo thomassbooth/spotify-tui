@@ -3,6 +3,7 @@ package view
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/thomassbooth/spotify-tui/internal/service"
 )
 
 type Component interface {
@@ -21,10 +22,10 @@ type Page struct {
 	height     int
 }
 
-func NewPage() Page {
+func NewPage(playlistService *service.PlaylistService) Page {
 
 	bus := NewMessageBus()
-	sidebar := NewSidebar(bus)
+	sidebar := NewSidebar(bus, playlistService)
 	sidebar.Focus()
 
 	return Page{
@@ -87,10 +88,10 @@ func (p Page) View() string {
 	}
 
 	// Navigation bar spans full width at the top
-	navBar := p.navigation.View(p.width, p.height)
+	navBar := p.navigation.View(p.width, 3)
 
 	// Below nav: sidebar on left, content on right
-	sidebarView := p.sidebar.View(22, p.height-4) // subtract nav height
+	sidebarView := p.sidebar.View(50, p.height-10) // subtract nav height
 
 	// Sidebar and content side by side
 	belowNav := lipgloss.JoinHorizontal(lipgloss.Top, sidebarView)

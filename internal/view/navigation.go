@@ -13,21 +13,6 @@ type Navigation struct {
 	focused  bool
 }
 
-var (
-	navBarStyle = lipgloss.NewStyle().
-			Background(lipgloss.Color("#000000")).
-			Foreground(lipgloss.Color("#b3b3b3")).
-			Padding(1, 2)
-
-	selectedNavStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#1db954")).
-				Bold(true)
-
-	itemNavStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#b3b3b3")).
-			Padding(0, 2)
-)
-
 func NewNavigation() *Navigation {
 	return &Navigation{
 		selected: 1, // Start with Home selected
@@ -38,6 +23,7 @@ func NewNavigation() *Navigation {
 
 // Update handles messages for the navigation component
 func (n *Navigation) Update(msg tea.Msg) (Component, tea.Cmd) {
+	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -57,7 +43,8 @@ func (n *Navigation) Update(msg tea.Msg) (Component, tea.Cmd) {
 			n.selected = 2
 		}
 	}
-	return n, nil
+	return n, cmd
+
 }
 
 func (n *Navigation) Blur() {
@@ -71,18 +58,27 @@ func (n *Navigation) Focused() bool {
 	return n.focused
 }
 
-// View renders the navigation bar - should span full width at top
 func (n *Navigation) View(width, height int) string {
-	var navItems []string
-
-	for i, item := range n.items {
-		style := itemNavStyle
+	// Build inner items
+	var parts []string
+	for i, txt := range n.items {
+		style := ItemNavStyle
 		if i == n.selected {
-			style = selectedNavStyle
+			style = SelectedNavStyle
 		}
-		navItems = append(navItems, style.Render(item))
+		parts = append(parts, style.Render(txt))
+	}
+	inner := lipgloss.JoinHorizontal(lipgloss.Left, parts...)
+	inner = NavBarStyle.Render(inner)
+
+	border := borderStyle.Copy().
+		Width(width).
+		Height(height)
+
+	if n.Focused() {
+		border = border.BorderForeground(lipgloss.Color("#1db954")) // Spotify green
 	}
 
-	nav := lipgloss.JoinHorizontal(lipgloss.Left, navItems...)
-	return navBarStyle.Width(width).Render(nav) // Full width
+	return border.Render(inner)
+
 }

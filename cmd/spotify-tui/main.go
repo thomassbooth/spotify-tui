@@ -12,6 +12,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/thomassbooth/spotify-tui/internal/client/auth"
 	"github.com/thomassbooth/spotify-tui/internal/client/spotify"
+	"github.com/thomassbooth/spotify-tui/internal/service"
 	"github.com/thomassbooth/spotify-tui/internal/view"
 )
 
@@ -56,7 +57,8 @@ func main() {
 		fmt.Println(playbackState.Track.Name)
 	}
 
-	p := tea.NewProgram(view.NewPage())
+	playlistService := service.NewPlaylistService(client)
+	p := tea.NewProgram(view.NewPage(&playlistService))
 
 	if _, err := p.Run(); err != nil {
 		fmt.Println("err")
