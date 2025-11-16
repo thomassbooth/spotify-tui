@@ -8,4 +8,5 @@ type Playlist struct {
 	OwnerName   string
 	TrackCount  int
 	URI         string
+	Type        string
 }

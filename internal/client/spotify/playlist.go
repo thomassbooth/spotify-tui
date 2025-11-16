@@ -23,3 +23,20 @@ func (client *Client) GetPlaylists(ctx context.Context) (*response.GetPlaylistsR
 
 	return &response, nil
 }
+
+func (client *Client) GetPlaylistItems(ctx context.Context, playlistID string) (*response.GetPlaylistItemsResponse, error) {
+	endpoint := fmt.Sprintf("/playlists/%s/tracks", playlistID)
+
+	data, err := client.Get(ctx, endpoint, nil)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var resp response.GetPlaylistItemsResponse
+	if err := json.Unmarshal(data, &resp); err != nil {
+		return nil, err
+	}
+
+	return &resp, nil
+}

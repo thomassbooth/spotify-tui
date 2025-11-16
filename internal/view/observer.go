@@ -5,7 +5,7 @@ import (
 )
 
 type Subscriber interface {
-	onMessage(t MsgType, msg tea.Msg) tea.Cmd
+	OnMessage(t MsgType, msg tea.Msg) tea.Cmd
 }
 
 type MessageBus struct {
@@ -27,7 +27,7 @@ func (m *MessageBus) Publish(t MsgType, msg tea.Msg) []tea.Cmd {
 	var cmds []tea.Cmd
 
 	for _, sub := range m.subscribers[t] {
-		if cmd := sub.onMessage(t, msg); cmd != nil {
+		if cmd := sub.OnMessage(t, msg); cmd != nil {
 			cmds = append(cmds, cmd)
 		}
 	}

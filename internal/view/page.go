@@ -17,6 +17,7 @@ type Component interface {
 type Page struct {
 	sidebar    Component
 	navigation Component
+	tracks     Component
 	bus        *MessageBus
 	width      int
 	height     int
@@ -27,10 +28,11 @@ func NewPage(playlistService *service.PlaylistService) Page {
 	bus := NewMessageBus()
 	sidebar := NewSidebar(bus, playlistService)
 	sidebar.Focus()
-
+	tracks := NewPlaylistTracks(bus, playlistService)
 	return Page{
 		sidebar:    sidebar,
 		navigation: NewNavigation(),
+		tracks:     tracks,
 		bus:        bus,
 	}
 }
@@ -59,6 +61,9 @@ func (p Page) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else if p.sidebar.Focused() {
 			p.sidebar, cmd = p.sidebar.Update(msg)
 			cmds = append(cmds, cmd)
+		} else if p.tracks.Focused() {
+			p.tracks, cmd = p.tracks.Update(msg)
+			cmds = append(cmds, cmd)
 		}
 
 	case tea.WindowSizeMsg:
@@ -69,7 +74,7 @@ func (p Page) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (p *Page) cycleFocus() {
-	components := []Component{p.navigation, p.sidebar}
+	components := []Component{p.navigation, p.sidebar, p.tracks}
 
 	// Find currently focused
 	for i, c := range components {
@@ -87,15 +92,26 @@ func (p Page) View() string {
 		return "loading..."
 	}
 
-	// Navigation bar spans full width at the top
-	navBar := p.navigation.View(p.width, 3)
+	p.height = p.height - 1
+	p.width = p.width - 1
+	// === 1. Navigation bar (full width, fixed height) ===
+	const navHeight = 3
+	navBar := p.navigation.View(p.width, navHeight)
 
-	// Below nav: sidebar on left, content on right
-	sidebarView := p.sidebar.View(50, p.height-10) // subtract nav height
+	// === 2. Main content area (below nav) ===
+	contentHeight := p.height - navHeight - 3
 
-	// Sidebar and content side by side
-	belowNav := lipgloss.JoinHorizontal(lipgloss.Top, sidebarView)
+	// === 3. Sidebar + Tracks (side by side) ===
+	const sidebarRatio = 0.35 // 35% of width for sidebar
+	sidebarWidth := int(float64(p.width) * sidebarRatio)
+	tracksWidth := p.width - sidebarWidth
 
-	// Stack nav bar on top of everything
-	return lipgloss.JoinVertical(lipgloss.Left, navBar, belowNav)
+	sidebarView := p.sidebar.View(sidebarWidth, contentHeight)
+	tracksView := p.tracks.View(tracksWidth, contentHeight)
+
+	// Join sidebar + tracks horizontally
+	contentRow := lipgloss.JoinHorizontal(lipgloss.Top, sidebarView, tracksView)
+
+	// === 4. Stack nav on top of content ===
+	return lipgloss.JoinVertical(lipgloss.Left, navBar, contentRow)
 }

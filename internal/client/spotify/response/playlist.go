@@ -20,6 +20,44 @@ type PlaylistItem struct {
 	URI           string         `json:"uri"`
 }
 
+type GetPlaylistItemsResponse struct {
+	Href     string              `json:"href"`
+	Limit    int                 `json:"limit"`
+	Next     string              `json:"next"`
+	Offset   int                 `json:"offset"`
+	Previous string              `json:"previous"`
+	Total    int                 `json:"total"`
+	Items    []PlaylistTrackItem `json:"items"`
+}
+
+type PlaylistTrackItem struct {
+	AddedAt string `json:"added_at"`
+	Track   Track  `json:"track"`
+}
+
+type Track struct {
+	ID         string   `json:"id"`
+	Name       string   `json:"name"`
+	Album      Album    `json:"album"`
+	Artists    []Artist `json:"artists"`
+	DurationMs int      `json:"duration_ms"`
+	URI        string   `json:"uri"`
+}
+
+type Album struct {
+	ID      string   `json:"id"`
+	Name    string   `json:"name"`
+	Images  []Image  `json:"images"`
+	Artists []Artist `json:"artists"`
+	URI     string   `json:"uri"`
+}
+
+type Artist struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	URI  string `json:"uri"`
+}
+
 type Image struct {
 	URL    string `json:"url"`
 	Height int    `json:"height"`
