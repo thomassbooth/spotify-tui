@@ -13,8 +13,7 @@ var (
 			Padding(0, 0)
 
 	SelectedNavStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#1db954")).
-				Bold(true)
+				Foreground(lipgloss.Color("#1db954"))
 
 	ItemNavStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#b3b3b3")).
