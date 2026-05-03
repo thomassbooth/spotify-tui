@@ -170,10 +170,10 @@ func (p *Playbar) OnMessage(t MsgType, msg tea.Msg) tea.Cmd {
 	if t == MsgPlayTrack {
 		if playTrackMsg, ok := msg.(PlayTrackMsg); ok {
 			// play then get the updated state to update
-			err := p.playbackService.Play(playTrackMsg.TrackURI, playTrackMsg.PlaylistURI)
-			time.Sleep(300 * time.Millisecond)
-			state, err := p.playbackService.GetCurrentPlaybackState()
 			return func() tea.Msg {
+				err := p.playbackService.Play(playTrackMsg.TrackURI, playTrackMsg.PlaylistURI)
+				time.Sleep(300 * time.Millisecond)
+				state, err := p.playbackService.GetCurrentPlaybackState()
 				if err != nil {
 					return errMsg{Err: err}
 				}
