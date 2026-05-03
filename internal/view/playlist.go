@@ -71,10 +71,9 @@ type PlaylistTracks struct {
 func NewPlaylistTracks(bus *MessageBus, playlistService *service.PlaylistService) *PlaylistTracks {
 	const defaultWidth = 30
 
-	// ←←← CREATE THE LIST HERE
 	delegate := playlistDelegate{}
 	l := list.New([]list.Item{}, delegate, defaultWidth, 0)
-	l.SetShowTitle(false)
+	l.Title = "Playlist Tracks"
 	l.SetShowHelp(false)
 	l.SetShowStatusBar(false)
 	l.SetShowPagination(false)
@@ -91,26 +90,18 @@ func NewPlaylistTracks(bus *MessageBus, playlistService *service.PlaylistService
 }
 
 func (s *PlaylistTracks) OnMessage(t MsgType, msg tea.Msg) tea.Cmd {
-	// We only care about playlist selection
 	if t != MsgPlaylistSelected {
 		return nil
 	}
 
-	// Payload should be the playlist ID (string)
-	playlistID, ok := msg.(string)
+	playlistMsg, ok := msg.(PlaylistSelectedMsg)
 	if !ok {
-		// optional: publish an error
 		return nil
 	}
 
-	// -----------------------------------------------------------------
-	// Fetch tracks from Spotify
-	// -----------------------------------------------------------------
-	tracks, _ := s.playlistService.GetPlaylistTracks(playlistID)
+	s.tracks.Title = playlistMsg.Name
+	tracks, _ := s.playlistService.GetPlaylistTracks(playlistMsg.ID)
 
-	// -----------------------------------------------------------------
-	// Convert to list items
-	// -----------------------------------------------------------------
 	items := make([]list.Item, len(tracks))
 	for i, tr := range tracks {
 		artistNames := make([]string, len(tr.Artists))
@@ -125,10 +116,8 @@ func (s *PlaylistTracks) OnMessage(t MsgType, msg tea.Msg) tea.Cmd {
 		}
 	}
 
-	// Update UI
 	s.tracks.SetItems(items)
 
-	// No extra command needed, but you could return a custom cmd here
 	return nil
 }
 

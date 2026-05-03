@@ -95,7 +95,7 @@ func (p Page) View() string {
 	p.height = p.height - 1
 	p.width = p.width - 5
 	// === 1. Navigation bar (full width, fixed height) ===
-	const navHeight = 3
+	const navHeight = 10
 	navBar := p.navigation.View(p.width, navHeight)
 
 	// === 2. Main content area (below nav) ===

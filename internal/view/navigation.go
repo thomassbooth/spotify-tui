@@ -2,9 +2,28 @@
 package view
 
 import (
+	"strings"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
+
+var spotifyLogo string
+
+func init() {
+	const bt = "`"
+	const logo = `
+____                      __            ___             ______  __  __   ______     
+/\  _BT                   /\ \__  __   /'___\           /\__  _\/\ \/\ \ /\__  _\    
+\ \,\L\_\   _____     ___ \ \ ,_\/\_\ /\ \__/  __  __   \/_/\ \/\ \ \ \ \\/_/\ \/    
+ \/_\__ \  /\ '__BT  / __BT\\\ \ \/\/\ \\ \ ,__\/\ \/\ \     \ \ \ \ \ \ \ \ \  \ \ \    
+   /\ \L\ \\ \ \L\ \/\ \L\ \\ \ \_\ \ \\ \ \_/\ \ \_\ \     \ \ \ \ \ \_\ \  \_\ \__ 
+   \ BT____\\ \ ,__/\ \____/ \ \__\\ \_\\ \_\  \/BT____ \     \ \_\ \ \_____\ /\_____\
+    \/_____/ \ \ \/  \/___/   \/__/ \/_/ \/_/   BT___/> \     \/_/  \/_____/ \/_____/
+              \ \_\                                /\___/                            
+               \/_/                                \/__/                              
+`
+	spotifyLogo = strings.ReplaceAll(logo, "BT", bt)
+}
 
 // Navigation component (not a full tea.Model)
 type Navigation struct {
@@ -59,7 +78,6 @@ func (n *Navigation) Focused() bool {
 }
 
 func (n *Navigation) View(width, height int) string {
-	// Build inner items
 	var parts []string
 	for i, txt := range n.items {
 		style := ItemNavStyle
@@ -71,14 +89,16 @@ func (n *Navigation) View(width, height int) string {
 	inner := lipgloss.JoinHorizontal(lipgloss.Left, parts...)
 	inner = NavBarStyle.Render(inner)
 
+	logoStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#1db954"))
+	content := lipgloss.JoinVertical(lipgloss.Top, logoStyle.Render(spotifyLogo), inner)
+
 	border := borderStyle.Copy().
 		Width(width).
 		Height(height)
 
 	if n.Focused() {
-		border = border.BorderForeground(lipgloss.Color("#1db954")) // Spotify green
+		border = border.BorderForeground(lipgloss.Color("#1db954"))
 	}
 
-	return border.Render(inner)
-
+	return border.Render(content)
 }

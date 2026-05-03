@@ -18,79 +18,61 @@ const (
 
 type Client struct {
 	httpClient *http.Client
-	token      *oauth2.Token
 }
 
 func NewClient(token *oauth2.Token) *Client {
-	httpClient := oauth2.NewClient(context.Background(), oauth2.StaticTokenSource(token))
-
 	return &Client{
-		httpClient: httpClient,
-		token:      token,
+		httpClient: oauth2.NewClient(context.Background(), oauth2.StaticTokenSource(token)),
 	}
 }
 
-func (client *Client) Get(ctx context.Context, path string, params interface{}) ([]byte, error) {
-
-	res, err := client.do(ctx, http.MethodGet, path, params, nil)
-
-	return res, err
-
+func (c *Client) Get(ctx context.Context, path string, params interface{}) ([]byte, error) {
+	return c.do(ctx, http.MethodGet, path, params, nil)
 }
 
-func (client *Client) Post(ctx context.Context, path string, params, body interface{}) ([]byte, error) {
-
-	res, err := client.do(ctx, http.MethodPost, path, params, body)
-
-	return res, err
+func (c *Client) Post(ctx context.Context, path string, params, body interface{}) ([]byte, error) {
+	return c.do(ctx, http.MethodPost, path, params, body)
 }
 
-func (client *Client) Put(ctx context.Context, path string, params, body interface{}) ([]byte, error) {
-
-	res, err := client.do(ctx, http.MethodPut, path, params, body)
-
-	return res, err
+func (c *Client) Put(ctx context.Context, path string, params, body interface{}) ([]byte, error) {
+	return c.do(ctx, http.MethodPut, path, params, body)
 }
 
-func (client *Client) Delete(ctx context.Context, path string, params, body interface{}) ([]byte, error) {
-
-	res, err := client.do(ctx, http.MethodDelete, path, params, body)
-
-	return res, err
+func (c *Client) Delete(ctx context.Context, path string, params, body interface{}) ([]byte, error) {
+	return c.do(ctx, http.MethodDelete, path, params, body)
 }
 
-func (client *Client) do(ctx context.Context, method, path string, params, body interface{}) ([]byte, error) {
-	url := baseURL + path
-
-	url, err := client.addQueryParams(path, params)
+func (c *Client) do(ctx context.Context, method, path string, params, body interface{}) ([]byte, error) {
+	url, err := c.addQueryParams(path, params)
 	if err != nil {
 		return nil, err
 	}
 
-	bodyReader, err := client.createBody(body)
-
+	bodyReader, err := c.createBody(body)
 	if err != nil {
 		return nil, err
 	}
 
-	request, err := client.createRequest(ctx, url, method, bodyReader)
-	resp, err := client.httpClient.Do(request)
+	request, err := c.createRequest(ctx, url, method, bodyReader)
 	if err != nil {
-		return nil, fmt.Errorf("Http request fail: %w", err)
+		return nil, err
 	}
 
+	resp, err := c.httpClient.Do(request)
+	if err != nil {
+		return nil, fmt.Errorf("http request failed: %w", err)
+	}
 	defer resp.Body.Close()
 
 	respBody, err := io.ReadAll(resp.Body)
-
 	if err != nil {
-		return nil, fmt.Errorf("Error reading resp obj: %w", err)
+		return nil, fmt.Errorf("error reading response body: %w", err)
 	}
 
 	return respBody, nil
 }
 
-func (client *Client) addQueryParams(path string, params interface{}) (string, error) {
+func (c *Client) addQueryParams(path string, params interface{}) (string, error) {
 	url := baseURL + path
 	if params != nil {
 		v, err := query.Values(params)
@@ -105,12 +87,12 @@ func (client *Client) addQueryParams(path string, params interface{}) (string, e
 	return url, nil
 }
 
-func (client *Client) createBody(body interface{}) (io.Reader, error) {
+func (c *Client) createBody(body interface{}) (io.Reader, error) {
 	var bodyReader io.Reader
 	if body != nil {
 		jsonBody, err := json.Marshal(body)
 		if err != nil {
-			return nil, fmt.Errorf("masrshal body: %w", err)
+			return nil, fmt.Errorf("marshal body: %w", err)
 		}
 
 		bodyReader = bytes.NewReader(jsonBody)
@@ -119,9 +101,8 @@ func (client *Client) createBody(body interface{}) (io.Reader, error) {
 	return bodyReader, nil
 }
 
-func (client *Client) createRequest(ctx context.Context, url, method string, body io.Reader) (*http.Request, error) {
+func (c *Client) createRequest(ctx context.Context, url, method string, body io.Reader) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, method, url, body)
-
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
 	}

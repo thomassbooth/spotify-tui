@@ -143,7 +143,10 @@ func (s *Sidebar) Update(msg tea.Msg) (Component, tea.Cmd) {
 			if sel := s.list.SelectedItem(); sel != nil {
 				if item, ok := sel.(sidebarItem); ok && item.id != "" {
 					// Publish using your MessageBus API: (type, payload)
-					s.bus.Publish(MsgPlaylistSelected, item.id)
+					s.bus.Publish(MsgPlaylistSelected, PlaylistSelectedMsg{
+					ID:   item.id,
+					Name: item.name,
+				})
 				}
 			}
 			return s, nil
