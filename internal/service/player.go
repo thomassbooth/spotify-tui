@@ -27,7 +27,9 @@ func (s *PlaybackService) GetCurrentPlaybackState() (*entities.PlaybackState, er
 	defer cancel()
 	return s.client.GetCurrentPlayback(ctx)
 }
-func (s *PlaybackService) Play(ctx context.Context, trackURI string, playlistURI string) error {
+func (s *PlaybackService) Play(trackURI string, playlistURI string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
 	var body map[string]interface{}
 
 	if playlistURI != "" {
@@ -44,7 +46,7 @@ func (s *PlaybackService) Play(ctx context.Context, trackURI string, playlistURI
 			"position_ms": 0,
 		}
 	}
-
+		
 	_, err := s.client.Put(ctx, "/me/player/play", nil, body)
 	return err
 }

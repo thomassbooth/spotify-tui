@@ -106,66 +106,39 @@ func (s *PlaylistTracks) OnMessage(t MsgType, msg tea.Msg) tea.Cmd {
 		s.lastPlaylist = playlistMsg
 		s.showingQueue = false
 		s.tracks.Title = playlistMsg.Name
-		tracks, _ := s.playlistService.GetPlaylistTracks(playlistMsg.ID)
 
-		items := make([]list.Item, len(tracks))
-		for i, tr := range tracks {
-			artistNames := make([]string, len(tr.Artists))
-			for j, a := range tr.Artists {
-				artistNames[j] = a.Name
+		return func() tea.Msg {
+			tracks, err := s.playlistService.GetPlaylistTracks(playlistMsg.ID)
+			if err != nil {
+				return errMsg{Err: err}
 			}
-
-			items[i] = playlistItem{
-				name:    tr.Name,
-				artists: artistNames,
-				id:      tr.ID,
-			}
+			return tracksLoadedMsg{tracks: tracks}
 		}
-
-		s.tracks.SetItems(items)
-		return nil
 	}
 
 	if t == MsgToggleQueue {
 		s.showingQueue = !s.showingQueue
 		if s.showingQueue {
 			s.tracks.Title = "Queued Songs"
-			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-			defer cancel()
-			queueTracks, err := s.playbackService.GetQueue(ctx)
-			if err == nil && len(queueTracks) > 0 {
-				items := make([]list.Item, len(queueTracks))
-				for i, tr := range queueTracks {
-					artistNames := make([]string, len(tr.Artists))
-					for j, a := range tr.Artists {
-						artistNames[j] = a.Name
-					}
-					items[i] = playlistItem{
-						name:    tr.Name,
-						artists: artistNames,
-						id:      tr.ID,
-					}
+			return func() tea.Msg {
+				ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+				defer cancel()
+				queueTracks, err := s.playbackService.GetQueue(ctx)
+				if err != nil {
+					return errMsg{Err: err}
 				}
-				s.tracks.SetItems(items)
+				return queueLoadedMsg{tracks: queueTracks}
 			}
 		} else if s.lastPlaylist.ID != "" {
 			s.tracks.Title = s.lastPlaylist.Name
-			tracks, _ := s.playlistService.GetPlaylistTracks(s.lastPlaylist.ID)
-			items := make([]list.Item, len(tracks))
-			for i, tr := range tracks {
-				artistNames := make([]string, len(tr.Artists))
-				for j, a := range tr.Artists {
-					artistNames[j] = a.Name
+			return func() tea.Msg {
+				tracks, err := s.playlistService.GetPlaylistTracks(s.lastPlaylist.ID)
+				if err != nil {
+					return errMsg{Err: err}
 				}
-				items[i] = playlistItem{
-					name:    tr.Name,
-					artists: artistNames,
-					id:      tr.ID,
-				}
+				return tracksLoadedMsg{tracks: tracks}
 			}
-			s.tracks.SetItems(items)
 		}
-		return nil
 	}
 
 	return nil
@@ -177,6 +150,44 @@ func (s *PlaylistTracks) Deselect() {
 
 func (s *PlaylistTracks) Update(msg tea.Msg) (Component, tea.Cmd) {
 	var cmd tea.Cmd
+
+	switch msg := msg.(type) {
+	case tracksLoadedMsg:
+		items := make([]list.Item, len(msg.tracks))
+		for i, tr := range msg.tracks {
+			artistNames := make([]string, len(tr.Artists))
+			for j, a := range tr.Artists {
+				artistNames[j] = a.Name
+			}
+			items[i] = playlistItem{
+				name:    tr.Name,
+				artists: artistNames,
+				id:      tr.ID,
+			}
+		}
+		s.tracks.SetItems(items)
+		return s, nil
+
+	case queueLoadedMsg:
+		items := make([]list.Item, len(msg.tracks))
+		for i, tr := range msg.tracks {
+			artistNames := make([]string, len(tr.Artists))
+			for j, a := range tr.Artists {
+				artistNames[j] = a.Name
+			}
+			items[i] = playlistItem{
+				name:    tr.Name,
+				artists: artistNames,
+				id:      tr.ID,
+			}
+		}
+		s.tracks.SetItems(items)
+		return s, nil
+
+	case errMsg:
+		return s, nil
+	}
+
 	if !s.focused {
 		s.tracks.Select(-1)
 		return s, nil
@@ -198,7 +209,7 @@ func (s *PlaylistTracks) Update(msg tea.Msg) (Component, tea.Cmd) {
 						if !s.showingQueue && s.lastPlaylist.ID != "" {
 							playlistURI = s.lastPlaylist.URI
 						}
-						s.bus.Publish(MsgPlayTrack, PlayTrackMsg{
+						return s, s.bus.Publish(MsgPlayTrack, PlayTrackMsg{
 							TrackURI:    "spotify:track:" + item.id,
 							PlaylistURI: playlistURI,
 						})

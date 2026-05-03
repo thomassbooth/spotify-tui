@@ -61,3 +61,16 @@ type QueueUpdateMsg struct {
 }
 
 type ToggleQueueMsg struct{}
+
+// Internal messages for async operations
+type tracksLoadedMsg struct {
+	tracks []entities.Track
+}
+
+type queueLoadedMsg struct {
+	tracks []entities.Track
+}
+
+type errMsg struct {
+	Err error
+}

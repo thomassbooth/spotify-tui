@@ -69,8 +69,9 @@ func (p *Page) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return p, nil
 		}
 		if m.String() == "Q" {
-			p.bus.Publish(MsgToggleQueue, ToggleQueueMsg{})
-			return p, nil
+			cmd := p.bus.Publish(MsgToggleQueue, ToggleQueueMsg{})
+			cmds = append(cmds, cmd)
+			return p, tea.Batch(cmds...)
 		}
 
 		if p.navigation.Focused() {
@@ -87,6 +88,11 @@ func (p *Page) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, cmd)
 		}
 
+	case errMsg:
+		cmds = append(cmds, func() tea.Msg {
+			return m
+		})
+
 	case tea.WindowSizeMsg:
 		p.width, p.height = m.Width, m.Height
 
@@ -102,7 +108,12 @@ func (p *Page) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, startSyncPoll(p.playbackSvc))
 
 	default:
+		// Route non-key messages to all components that handle them
 		p.playbar, cmd = p.playbar.Update(msg)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+		p.tracks, cmd = p.tracks.Update(msg)
 		if cmd != nil {
 			cmds = append(cmds, cmd)
 		}

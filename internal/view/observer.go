@@ -22,8 +22,7 @@ func (m *MessageBus) Subscribe(msgType MsgType, sub Subscriber) {
 	m.subscribers[msgType] = append(m.subscribers[msgType], sub)
 }
 
-func (m *MessageBus) Publish(t MsgType, msg tea.Msg) []tea.Cmd {
-
+func (m *MessageBus) Publish(t MsgType, msg tea.Msg) tea.Cmd {
 	var cmds []tea.Cmd
 
 	for _, sub := range m.subscribers[t] {
@@ -32,5 +31,5 @@ func (m *MessageBus) Publish(t MsgType, msg tea.Msg) []tea.Cmd {
 		}
 	}
 
-	return cmds
+	return tea.Batch(cmds...)
 }

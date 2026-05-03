@@ -1,7 +1,6 @@
 package view
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -170,25 +169,24 @@ func (p *Playbar) previousCmd() tea.Cmd {
 func (p *Playbar) OnMessage(t MsgType, msg tea.Msg) tea.Cmd {
 	if t == MsgPlayTrack {
 		if playTrackMsg, ok := msg.(PlayTrackMsg); ok {
-			go func() {
-				ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-				defer cancel()
-				err := p.playbackService.Play(ctx, playTrackMsg.TrackURI, playTrackMsg.PlaylistURI)
+			// play then get the updated state to update
+			err := p.playbackService.Play(playTrackMsg.TrackURI, playTrackMsg.PlaylistURI)
+			time.Sleep(300 * time.Millisecond)
+			state, err := p.playbackService.GetCurrentPlaybackState()
+			return func() tea.Msg {
 				if err != nil {
-					fmt.Printf("Error playing track: %v\n", err)
-					return
+					return errMsg{Err: err}
 				}
-				time.Sleep(300 * time.Millisecond)
-				state, err := p.playbackService.GetCurrentPlaybackState()
-				if err != nil || state == nil {
-					return
-				}
-				p.mu.Lock()
-				p.playbackState = state
-				p.elapsedMs = state.ProgressMs
-				p.mu.Unlock()
-				p.bus.Publish(MsgPlaybackUpdate, *state)
-			}()
+				return playbarSyncMsg{state: *state}
+			}
+		}
+	}
+
+	if t == MsgPlaybackUpdate {
+		if state, ok := msg.(entities.PlaybackState); ok {
+			return func() tea.Msg {
+				return playbarSyncMsg{state: state}
+			}
 		}
 	}
 	return nil
