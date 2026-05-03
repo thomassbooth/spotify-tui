@@ -22,3 +22,21 @@ func (client *Client) GetCurrentPlayback(ctx context.Context) (*entities.Playbac
 
 	return &state, nil
 }
+
+type QueueResponse struct {
+	Tracks []entities.Track `json:"queue"`
+}
+
+func (client *Client) GetQueue(ctx context.Context) (*QueueResponse, error) {
+	data, err := client.Get(ctx, "/me/player/queue", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var resp QueueResponse
+	if err := json.Unmarshal(data, &resp); err != nil {
+		return nil, fmt.Errorf("Cant decode json response from queue: %w", err)
+	}
+
+	return &resp, nil
+}

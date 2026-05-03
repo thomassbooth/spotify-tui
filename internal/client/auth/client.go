@@ -2,27 +2,26 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 	"time"
 
 	"golang.org/x/oauth2"
+
+	"github.com/thomassbooth/spotify-tui/internal/repository"
 )
 
 type Client struct {
 	flow       *AuthFlow
 	serverAddr string
-	tokenPath  string
+	TokenRepo  *repository.TokenRepository
 }
 
 type Config struct {
 	ClientID     string
 	ClientSecret string
-	TokenPath    string        // Where to save the token
-	ServerAddr   string        // e.g., "localhost:8888"
-	Timeout      time.Duration // How long to wait for user auth
+	TokenRepo    *repository.TokenRepository
+	ServerAddr   string
+	Timeout      time.Duration
 }
 
 func NewClient(cfg Config) *Client {
@@ -42,12 +41,12 @@ func NewClient(cfg Config) *Client {
 	return &Client{
 		flow:       flow,
 		serverAddr: cfg.ServerAddr,
-		tokenPath:  cfg.TokenPath,
+		TokenRepo:  cfg.TokenRepo,
 	}
 }
 
 func (c *Client) GetValidToken(ctx context.Context) (*oauth2.Token, error) {
-	token, err := c.loadToken()
+	token, err := c.TokenRepo.Load()
 	if err == nil {
 		if token.Valid() {
 			return token, nil
@@ -56,7 +55,7 @@ func (c *Client) GetValidToken(ctx context.Context) (*oauth2.Token, error) {
 		if token.RefreshToken != "" {
 			newToken, err := c.flow.RefreshToken(ctx, token)
 			if err == nil {
-				if saveErr := c.saveToken(newToken); saveErr != nil {
+				if saveErr := c.TokenRepo.Save(newToken); saveErr != nil {
 					fmt.Printf("Warning: failed to save refreshed token: %v\n", saveErr)
 				}
 				return newToken, nil
@@ -71,7 +70,7 @@ func (c *Client) GetValidToken(ctx context.Context) (*oauth2.Token, error) {
 		return nil, fmt.Errorf("authentication failed: %w", err)
 	}
 
-	if err := c.saveToken(token); err != nil {
+	if err := c.TokenRepo.Save(token); err != nil {
 		fmt.Printf("Warning: failed to save token: %v\n", err)
 	}
 
@@ -79,28 +78,21 @@ func (c *Client) GetValidToken(ctx context.Context) (*oauth2.Token, error) {
 }
 
 func (c *Client) Logout() error {
-	if err := os.Remove(c.tokenPath); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("failed to remove token: %w", err)
-	}
-	return nil
+	return c.TokenRepo.Delete()
 }
 
 func (c *Client) HasCachedToken() bool {
-	_, err := os.Stat(c.tokenPath)
-	return err == nil
+	return c.TokenRepo.Exists()
 }
 
 func (c *Client) GetTokenInfo() (*TokenInfo, error) {
-	token, err := c.loadToken()
-	if err != nil {
-		return nil, err
-	}
+	valid, expiry, hasRefresh, expiresIn := c.TokenRepo.GetTokenInfo()
 
 	return &TokenInfo{
-		Valid:      token.Valid(),
-		Expiry:     token.Expiry,
-		HasRefresh: token.RefreshToken != "",
-		ExpiresIn:  time.Until(token.Expiry),
+		Valid:      valid,
+		Expiry:     expiry,
+		HasRefresh: hasRefresh,
+		ExpiresIn:  expiresIn,
 	}, nil
 }
 
@@ -109,36 +101,4 @@ type TokenInfo struct {
 	Expiry     time.Time
 	HasRefresh bool
 	ExpiresIn  time.Duration
-}
-
-func (c *Client) loadToken() (*oauth2.Token, error) {
-	data, err := os.ReadFile(c.tokenPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read token file: %w", err)
-	}
-
-	var token oauth2.Token
-	if err := json.Unmarshal(data, &token); err != nil {
-		return nil, fmt.Errorf("failed to parse token: %w", err)
-	}
-
-	return &token, nil
-}
-
-func (c *Client) saveToken(token *oauth2.Token) error {
-	dir := filepath.Dir(c.tokenPath)
-	if err := os.MkdirAll(dir, 0700); err != nil {
-		return fmt.Errorf("failed to create token directory: %w", err)
-	}
-
-	data, err := json.MarshalIndent(token, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal token: %w", err)
-	}
-
-	if err := os.WriteFile(c.tokenPath, data, 0600); err != nil {
-		return fmt.Errorf("failed to write token file: %w", err)
-	}
-
-	return nil
 }

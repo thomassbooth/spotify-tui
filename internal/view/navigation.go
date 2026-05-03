@@ -2,28 +2,10 @@
 package view
 
 import (
-	"strings"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/thomassbooth/spotify-tui/internal/assets"
 )
-
-var spotifyLogo string
-
-func init() {
-	const bt = "`"
-	const logo = `
-____                      __            ___             ______  __  __   ______     
-/\  _BT                   /\ \__  __   /'___\           /\__  _\/\ \/\ \ /\__  _\    
-\ \,\L\_\   _____     ___ \ \ ,_\/\_\ /\ \__/  __  __   \/_/\ \/\ \ \ \ \\/_/\ \/    
- \/_\__ \  /\ '__BT  / __BT\\\ \ \/\/\ \\ \ ,__\/\ \/\ \     \ \ \ \ \ \ \ \ \  \ \ \    
-   /\ \L\ \\ \ \L\ \/\ \L\ \\ \ \_\ \ \\ \ \_/\ \ \_\ \     \ \ \ \ \ \_\ \  \_\ \__ 
-   \ BT____\\ \ ,__/\ \____/ \ \__\\ \_\\ \_\  \/BT____ \     \ \_\ \ \_____\ /\_____\
-    \/_____/ \ \ \/  \/___/   \/__/ \/_/ \/_/   BT___/> \     \/_/  \/_____/ \/_____/
-              \ \_\                                /\___/                            
-               \/_/                                \/__/                              
-`
-	spotifyLogo = strings.ReplaceAll(logo, "BT", bt)
-}
 
 // Navigation component (not a full tea.Model)
 type Navigation struct {
@@ -86,11 +68,14 @@ func (n *Navigation) View(width, height int) string {
 		}
 		parts = append(parts, style.Render(txt))
 	}
-	inner := lipgloss.JoinHorizontal(lipgloss.Left, parts...)
-	inner = NavBarStyle.Render(inner)
+	nav := lipgloss.JoinHorizontal(lipgloss.Top, parts...)
 
 	logoStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#1db954"))
-	content := lipgloss.JoinVertical(lipgloss.Top, logoStyle.Render(spotifyLogo), inner)
+	
+	navWidth := lipgloss.Width(nav)
+	logo := logoStyle.Width(width - navWidth - 2).Align(lipgloss.Right).Render(assets.SpotifyLogo)
+
+	content := lipgloss.JoinHorizontal(lipgloss.Top, nav, logo)
 
 	border := borderStyle.Copy().
 		Width(width).

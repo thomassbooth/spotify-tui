@@ -1,5 +1,9 @@
 package view
 
+import (
+	"github.com/thomassbooth/spotify-tui/internal/entities"
+)
+
 type MsgType string
 
 const (
@@ -18,6 +22,9 @@ const (
 	MsgPrev             MsgType = "prev"
 	MsgError            MsgType = "error"
 	MsgUnknown          MsgType = "unknown"
+	MsgPlaybackUpdate   MsgType = "playback.update"
+	MsgQueueUpdate      MsgType = "queue.update"
+	MsgToggleQueue      MsgType = "toggle.queue"
 )
 
 // Actual message structs
@@ -28,6 +35,7 @@ type TabChangedMsg struct {
 type PlaylistSelectedMsg struct {
 	ID   string
 	Name string
+	URI  string
 }
 
 type TrackSelectedMsg struct {
@@ -40,9 +48,16 @@ type SearchQueryMsg struct {
 }
 
 type PlayTrackMsg struct {
-	TrackID string
+	TrackURI     string
+	PlaylistURI string // If playing from a playlist, the playlist URI for context
 }
 
 type ErrorMsg struct {
 	Err error
 }
+
+type QueueUpdateMsg struct {
+	Tracks []entities.Track
+}
+
+type ToggleQueueMsg struct{}

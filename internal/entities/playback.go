@@ -10,8 +10,10 @@ type PlaybackState struct {
 }
 
 type Device struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Type     string `json:"type"`
-	IsActive bool   `json:"is_active"`
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	Type          string `json:"type"`
+	IsActive      bool   `json:"is_active"`
+	VolumePercent int    `json:"volume_percent"`
+	IsMuted       bool   `json:"is_muted"`
 }

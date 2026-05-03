@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+
+	"github.com/thomassbooth/spotify-tui/internal/assets"
 )
 
 // CallbackServer handles the OAuth callback HTTP server
@@ -81,12 +83,7 @@ func (s *CallbackServer) Stop(ctx context.Context) error {
 // handleCallback processes Spotify's OAuth redirect
 func (s *CallbackServer) handleCallback(w http.ResponseWriter, r *http.Request) {
 	defer func() {
-		fmt.Fprintf(w, `
-			<html><body>
-				<h1>Success!</h1>
-				<p>You can now close this window and return to the terminal.</p>
-			</body></html>
-		`)
+		fmt.Fprint(w, assets.CallbackResponseHTML)
 	}()
 
 	// Error from Spotify

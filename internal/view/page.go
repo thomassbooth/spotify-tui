@@ -1,8 +1,12 @@
 package view
 
 import (
+	"strings"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/thomassbooth/spotify-tui/internal/assets"
+	"github.com/thomassbooth/spotify-tui/internal/entities"
 	"github.com/thomassbooth/spotify-tui/internal/service"
 )
 
@@ -15,46 +19,60 @@ type Component interface {
 }
 
 type Page struct {
-	sidebar    Component
-	navigation Component
-	tracks     Component
-	bus        *MessageBus
-	width      int
-	height     int
+	sidebar     Component
+	navigation  Component
+	tracks      Component
+	playbar     Component
+	bus         *MessageBus
+	width       int
+	height      int
+	playbackSvc *service.PlaybackService
+	savedState  *entities.PlaybackState
 }
 
-func NewPage(playlistService *service.PlaylistService) Page {
-
+func NewPage(playlistService *service.PlaylistService, playbackService *service.PlaybackService) *Page {
 	bus := NewMessageBus()
 	sidebar := NewSidebar(bus, playlistService)
 	sidebar.Focus()
-	tracks := NewPlaylistTracks(bus, playlistService)
-	return Page{
-		sidebar:    sidebar,
-		navigation: NewNavigation(),
-		tracks:     tracks,
-		bus:        bus,
+	tracks := NewPlaylistTracks(bus, playlistService, playbackService)
+	playbar := NewPlaybar(bus, playbackService)
+	return &Page{
+		sidebar:     sidebar,
+		navigation:  NewNavigation(),
+		tracks:      tracks,
+		playbar:     playbar,
+		bus:         bus,
+		playbackSvc: playbackService,
 	}
 }
 
 // ---- tea.Model interface ------------------------------------------------
-func (p Page) Init() tea.Cmd { return nil }
+func (p *Page) Init() tea.Cmd {
+	cmds := []tea.Cmd{
+		p.playbar.(*Playbar).Init(),
+		startSyncPoll(p.playbackSvc),
+	}
+	return tea.Batch(cmds...)
+}
 
-func (p Page) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (p *Page) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
-	var cmd tea.Cmd // Declare once
+	var cmd tea.Cmd
 
-	switch msg := msg.(type) {
+	switch m := msg.(type) {
 	case tea.KeyMsg:
-		if msg.String() == "q" {
+		if m.String() == "q" {
 			return p, tea.Quit
 		}
-		if msg.String() == "tab" {
+		if m.String() == "tab" {
 			p.cycleFocus()
 			return p, nil
 		}
+		if m.String() == "Q" {
+			p.bus.Publish(MsgToggleQueue, ToggleQueueMsg{})
+			return p, nil
+		}
 
-		// Now you can use = instead of :=
 		if p.navigation.Focused() {
 			p.navigation, cmd = p.navigation.Update(msg)
 			cmds = append(cmds, cmd)
@@ -64,17 +82,37 @@ func (p Page) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else if p.tracks.Focused() {
 			p.tracks, cmd = p.tracks.Update(msg)
 			cmds = append(cmds, cmd)
+		} else if p.playbar.Focused() {
+			p.playbar, cmd = p.playbar.Update(msg)
+			cmds = append(cmds, cmd)
 		}
 
 	case tea.WindowSizeMsg:
-		p.width, p.height = msg.Width, msg.Height
+		p.width, p.height = m.Width, m.Height
+
+	case syncPollMsg:
+		if m.state != nil {
+			if p.savedState == nil || p.savedState.Track.ID != m.state.Track.ID {
+				p.savedState = m.state
+				cmds = append(cmds, func() tea.Msg {
+					return playbarSyncMsg{state: *m.state}
+				})
+			}
+		}
+		cmds = append(cmds, startSyncPoll(p.playbackSvc))
+
+	default:
+		p.playbar, cmd = p.playbar.Update(msg)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
 	}
 
 	return p, tea.Batch(cmds...)
 }
 
 func (p *Page) cycleFocus() {
-	components := []Component{p.navigation, p.sidebar, p.tracks}
+	components := []Component{p.navigation, p.sidebar, p.tracks, p.playbar}
 
 	// Find currently focused
 	for i, c := range components {
@@ -87,31 +125,31 @@ func (p *Page) cycleFocus() {
 	}
 }
 
-func (p Page) View() string {
+func (p *Page) View() string {
 	if p.width == 0 || p.height == 0 {
 		return "loading..."
 	}
 
-	p.height = p.height - 1
-	p.width = p.width - 5
-	// === 1. Navigation bar (full width, fixed height) ===
-	const navHeight = 10
-	navBar := p.navigation.View(p.width, navHeight)
+	height := p.height - 1
+	width := p.width - 5
 
-	// === 2. Main content area (below nav) ===
-	contentHeight := p.height - navHeight - 3
+	logoLines := len(strings.Split(strings.Trim(assets.SpotifyLogo, "\n"), "\n"))
+	navHeight := logoLines + 2
+	const playbarHeight = 3
 
-	// === 3. Sidebar + Tracks (side by side) ===
-	const sidebarRatio = 0.35 // 35% of width for sidebar
-	sidebarWidth := int(float64(p.width) * sidebarRatio)
-	tracksWidth := p.width - sidebarWidth
+	const sidebarRatio = 0.35
+	sidebarWidth := int(float64(width) * sidebarRatio)
+	tracksWidth := width - sidebarWidth
+
+	navBar := p.navigation.View(width + 2, navHeight)
+	contentHeight := height - navHeight - playbarHeight - 5
 
 	sidebarView := p.sidebar.View(sidebarWidth, contentHeight)
 	tracksView := p.tracks.View(tracksWidth, contentHeight)
 
-	// Join sidebar + tracks horizontally
 	contentRow := lipgloss.JoinHorizontal(lipgloss.Top, sidebarView, tracksView)
 
-	// === 4. Stack nav on top of content ===
-	return lipgloss.JoinVertical(lipgloss.Left, navBar, contentRow)
+	playbarView := p.playbar.View(width + 2, playbarHeight)
+
+	return lipgloss.JoinVertical(lipgloss.Left, navBar, contentRow, playbarView)
 }

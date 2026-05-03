@@ -3,9 +3,10 @@ package auth
 import (
 	"context"
 	"fmt"
-	"golang.org/x/oauth2"
 	"strings"
 	"time"
+
+	"golang.org/x/oauth2"
 )
 
 // AuthFlow orchestrates the complete OAuth authentication flow

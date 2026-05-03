@@ -1,8 +1,10 @@
 package view
 
 import (
+	"context"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
@@ -62,13 +64,16 @@ func (d playlistDelegate) Render(w io.Writer, m list.Model, index int, item list
 // 3. Sidebar component
 // ---------------------------------------------------------------------
 type PlaylistTracks struct {
-	tracks          list.Model
-	focused         bool
-	bus             *MessageBus
-	playlistService *service.PlaylistService
+	tracks           list.Model
+	focused          bool
+	bus              *MessageBus
+	playlistService  *service.PlaylistService
+	playbackService  *service.PlaybackService
+	showingQueue     bool
+	lastPlaylist     PlaylistSelectedMsg
 }
 
-func NewPlaylistTracks(bus *MessageBus, playlistService *service.PlaylistService) *PlaylistTracks {
+func NewPlaylistTracks(bus *MessageBus, playlistService *service.PlaylistService, playbackService *service.PlaybackService) *PlaylistTracks {
 	const defaultWidth = 30
 
 	delegate := playlistDelegate{}
@@ -79,44 +84,89 @@ func NewPlaylistTracks(bus *MessageBus, playlistService *service.PlaylistService
 	l.SetShowPagination(false)
 
 	self := &PlaylistTracks{
-		tracks:          l,
-		focused:         false,
-		bus:             bus,
-		playlistService: playlistService,
+		tracks:           l,
+		focused:          false,
+		bus:              bus,
+		playlistService:  playlistService,
+		playbackService:  playbackService,
 	}
 
-	bus.Subscribe(MsgPlaylistSelected, self) // pass pointer
+	bus.Subscribe(MsgPlaylistSelected, self)
+	bus.Subscribe(MsgToggleQueue, self)
 	return self
 }
 
 func (s *PlaylistTracks) OnMessage(t MsgType, msg tea.Msg) tea.Cmd {
-	if t != MsgPlaylistSelected {
+	if t == MsgPlaylistSelected {
+		playlistMsg, ok := msg.(PlaylistSelectedMsg)
+		if !ok {
+			return nil
+		}
+
+		s.lastPlaylist = playlistMsg
+		s.showingQueue = false
+		s.tracks.Title = playlistMsg.Name
+		tracks, _ := s.playlistService.GetPlaylistTracks(playlistMsg.ID)
+
+		items := make([]list.Item, len(tracks))
+		for i, tr := range tracks {
+			artistNames := make([]string, len(tr.Artists))
+			for j, a := range tr.Artists {
+				artistNames[j] = a.Name
+			}
+
+			items[i] = playlistItem{
+				name:    tr.Name,
+				artists: artistNames,
+				id:      tr.ID,
+			}
+		}
+
+		s.tracks.SetItems(items)
 		return nil
 	}
 
-	playlistMsg, ok := msg.(PlaylistSelectedMsg)
-	if !ok {
+	if t == MsgToggleQueue {
+		s.showingQueue = !s.showingQueue
+		if s.showingQueue {
+			s.tracks.Title = "Queued Songs"
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer cancel()
+			queueTracks, err := s.playbackService.GetQueue(ctx)
+			if err == nil && len(queueTracks) > 0 {
+				items := make([]list.Item, len(queueTracks))
+				for i, tr := range queueTracks {
+					artistNames := make([]string, len(tr.Artists))
+					for j, a := range tr.Artists {
+						artistNames[j] = a.Name
+					}
+					items[i] = playlistItem{
+						name:    tr.Name,
+						artists: artistNames,
+						id:      tr.ID,
+					}
+				}
+				s.tracks.SetItems(items)
+			}
+		} else if s.lastPlaylist.ID != "" {
+			s.tracks.Title = s.lastPlaylist.Name
+			tracks, _ := s.playlistService.GetPlaylistTracks(s.lastPlaylist.ID)
+			items := make([]list.Item, len(tracks))
+			for i, tr := range tracks {
+				artistNames := make([]string, len(tr.Artists))
+				for j, a := range tr.Artists {
+					artistNames[j] = a.Name
+				}
+				items[i] = playlistItem{
+					name:    tr.Name,
+					artists: artistNames,
+					id:      tr.ID,
+				}
+			}
+			s.tracks.SetItems(items)
+		}
 		return nil
 	}
-
-	s.tracks.Title = playlistMsg.Name
-	tracks, _ := s.playlistService.GetPlaylistTracks(playlistMsg.ID)
-
-	items := make([]list.Item, len(tracks))
-	for i, tr := range tracks {
-		artistNames := make([]string, len(tr.Artists))
-		for j, a := range tr.Artists {
-			artistNames[j] = a.Name
-		}
-
-		items[i] = playlistItem{
-			name:    tr.Name,
-			artists: artistNames,
-			id:      tr.ID,
-		}
-	}
-
-	s.tracks.SetItems(items)
 
 	return nil
 }
@@ -139,6 +189,22 @@ func (s *PlaylistTracks) Update(msg tea.Msg) (Component, tea.Cmd) {
 			key.Matches(msg, defaultKeyMap.ShiftTab):
 			s.tracks.Select(-1)
 			return s, nil
+		case key.Matches(msg, key.NewBinding(key.WithKeys("enter"))):
+			if len(s.tracks.Items()) > 0 {
+				selectedTrack := s.tracks.SelectedItem()
+				if selectedTrack != nil {
+					if item, ok := selectedTrack.(playlistItem); ok {
+						playlistURI := ""
+						if !s.showingQueue && s.lastPlaylist.ID != "" {
+							playlistURI = s.lastPlaylist.URI
+						}
+						s.bus.Publish(MsgPlayTrack, PlayTrackMsg{
+							TrackURI:    "spotify:track:" + item.id,
+							PlaylistURI: playlistURI,
+						})
+					}
+				}
+			}
 		}
 	}
 

@@ -28,6 +28,7 @@ type sidebarItem struct {
 	ownerName string
 	plType    string
 	id        string
+	uri       string
 }
 
 func (i sidebarItem) Title() string       { return i.name }
@@ -107,6 +108,7 @@ func NewSidebar(bus *MessageBus, playlistService *service.PlaylistService) *Side
 			ownerName: p.OwnerName,
 			plType:    p.Type,
 			id:        p.ID,
+			uri: 	 p.URI,
 		}
 	}
 
@@ -146,6 +148,7 @@ func (s *Sidebar) Update(msg tea.Msg) (Component, tea.Cmd) {
 					s.bus.Publish(MsgPlaylistSelected, PlaylistSelectedMsg{
 					ID:   item.id,
 					Name: item.name,
+					URI:  item.uri,
 				})
 				}
 			}
@@ -161,7 +164,7 @@ func (s *Sidebar) Update(msg tea.Msg) (Component, tea.Cmd) {
 var borderStyle = lipgloss.NewStyle().
 	BorderStyle(lipgloss.NormalBorder()).
 	BorderForeground(lipgloss.Color("#626262")).
-	Padding(0, 1)
+	Padding(0, 0)
 
 func (s *Sidebar) Blur() {
 	s.focused = false

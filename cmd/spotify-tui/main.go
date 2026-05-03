@@ -12,6 +12,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/thomassbooth/spotify-tui/internal/client/auth"
 	"github.com/thomassbooth/spotify-tui/internal/client/spotify"
+	"github.com/thomassbooth/spotify-tui/internal/repository"
 	"github.com/thomassbooth/spotify-tui/internal/service"
 	"github.com/thomassbooth/spotify-tui/internal/view"
 )
@@ -26,10 +27,13 @@ func main() {
 		log.Fatalf("Failed to get home directory: %v", err)
 	}
 
+	tokenPath := filepath.Join(homeDir, ".spotify-tui", "token.json")
+	tokenRepo := repository.NewTokenRepository(tokenPath)
+
 	authClient := auth.NewClient(auth.Config{
 		ClientID:     os.Getenv("SPOTIFY_CLIENT_ID"),
 		ClientSecret: os.Getenv("SPOTIFY_CLIENT_SECRET"),
-		TokenPath:    filepath.Join(homeDir, ".spotify-tui", "token.json"),
+		TokenRepo:    tokenRepo,
 		ServerAddr:   "localhost:8889",
 		Timeout:      2 * time.Minute,
 	})
@@ -44,9 +48,10 @@ func main() {
 
 	spotifyClient := spotify.NewClient(token)
 	playlistService := service.NewPlaylistService(spotifyClient)
-	p := tea.NewProgram(view.NewPage(&playlistService))
+	playbackService := service.NewPlaybackService(spotifyClient)
+	p := tea.NewProgram(view.NewPage(&playlistService, &playbackService))
 
 	if _, err := p.Run(); err != nil {
-		fmt.Println("err")
+		fmt.Printf("Error: %v\n", err)
 	}
 }
