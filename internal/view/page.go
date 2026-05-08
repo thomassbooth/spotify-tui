@@ -6,7 +6,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/thomassbooth/spotify-tui/internal/assets"
-	"github.com/thomassbooth/spotify-tui/internal/entities"
 	"github.com/thomassbooth/spotify-tui/internal/service"
 )
 
@@ -19,15 +18,13 @@ type Component interface {
 }
 
 type Page struct {
-	sidebar     Component
-	navigation  Component
-	tracks      Component
-	playbar     Component
-	bus         *MessageBus
-	width       int
-	height      int
-	playbackSvc *service.PlaybackService
-	savedState  *entities.PlaybackState
+	sidebar    Component
+	navigation Component
+	tracks     Component
+	playbar    Component
+	bus        *MessageBus
+	width      int
+	height     int
 }
 
 func NewPage(playlistService *service.PlaylistService, playbackService *service.PlaybackService) *Page {
@@ -37,22 +34,16 @@ func NewPage(playlistService *service.PlaylistService, playbackService *service.
 	tracks := NewPlaylistTracks(bus, playlistService, playbackService)
 	playbar := NewPlaybar(bus, playbackService)
 	return &Page{
-		sidebar:     sidebar,
-		navigation:  NewNavigation(),
-		tracks:      tracks,
-		playbar:     playbar,
-		bus:         bus,
-		playbackSvc: playbackService,
+		sidebar:    sidebar,
+		navigation: NewNavigation(),
+		tracks:     tracks,
+		playbar:    playbar,
+		bus:        bus,
 	}
 }
 
-// ---- tea.Model interface ------------------------------------------------
 func (p *Page) Init() tea.Cmd {
-	cmds := []tea.Cmd{
-		p.playbar.(*Playbar).Init(),
-		startSyncPoll(p.playbackSvc),
-	}
-	return tea.Batch(cmds...)
+	return p.playbar.(*Playbar).Init()
 }
 
 func (p *Page) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -69,8 +60,7 @@ func (p *Page) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return p, nil
 		}
 		if m.String() == "Q" {
-			cmd := p.bus.Publish(MsgToggleQueue, ToggleQueueMsg{})
-			cmds = append(cmds, cmd)
+			cmds = append(cmds, p.bus.Publish(MsgToggleQueue, ToggleQueueMsg{}))
 			return p, tea.Batch(cmds...)
 		}
 
@@ -89,26 +79,13 @@ func (p *Page) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case errMsg:
-		cmds = append(cmds, func() tea.Msg {
-			return m
-		})
+		// TODO: surface errors to the user (status bar, modal, etc.)
+		_ = m
 
 	case tea.WindowSizeMsg:
 		p.width, p.height = m.Width, m.Height
 
-	case syncPollMsg:
-		if m.state != nil {
-			if p.savedState == nil || p.savedState.Track.ID != m.state.Track.ID {
-				p.savedState = m.state
-				cmds = append(cmds, func() tea.Msg {
-					return playbarSyncMsg{state: *m.state}
-				})
-			}
-		}
-		cmds = append(cmds, startSyncPoll(p.playbackSvc))
-
 	default:
-		// Route non-key messages to all components that handle them
 		p.playbar, cmd = p.playbar.Update(msg)
 		if cmd != nil {
 			cmds = append(cmds, cmd)
@@ -125,12 +102,10 @@ func (p *Page) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (p *Page) cycleFocus() {
 	components := []Component{p.navigation, p.sidebar, p.tracks, p.playbar}
 
-	// Find currently focused
 	for i, c := range components {
 		if c.Focused() {
 			c.Blur()
-			next := (i + 1) % len(components)
-			components[next].Focus()
+			components[(i+1)%len(components)].Focus()
 			return
 		}
 	}
@@ -152,15 +127,14 @@ func (p *Page) View() string {
 	sidebarWidth := int(float64(width) * sidebarRatio)
 	tracksWidth := width - sidebarWidth
 
-	navBar := p.navigation.View(width + 2, navHeight)
+	navBar := p.navigation.View(width+2, navHeight)
 	contentHeight := height - navHeight - playbarHeight - 5
 
 	sidebarView := p.sidebar.View(sidebarWidth, contentHeight)
 	tracksView := p.tracks.View(tracksWidth, contentHeight)
 
 	contentRow := lipgloss.JoinHorizontal(lipgloss.Top, sidebarView, tracksView)
-
-	playbarView := p.playbar.View(width + 2, playbarHeight)
+	playbarView := p.playbar.View(width+2, playbarHeight)
 
 	return lipgloss.JoinVertical(lipgloss.Left, navBar, contentRow, playbarView)
 }

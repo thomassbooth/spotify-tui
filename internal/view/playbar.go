@@ -16,6 +16,9 @@ type playbarTickMsg struct{}
 type playbarSyncMsg struct {
 	state entities.PlaybackState
 }
+type syncPollMsg struct {
+	state *entities.PlaybackState
+}
 
 type Playbar struct {
 	bus             *MessageBus
@@ -41,7 +44,7 @@ func NewPlaybar(bus *MessageBus, playbackService *service.PlaybackService) *Play
 }
 
 func (p *Playbar) Init() tea.Cmd {
-	return p.fetchPlayback()
+	return tea.Batch(p.fetchPlayback(), startSyncPoll(p.playbackService))
 }
 
 func (p *Playbar) Update(msg tea.Msg) (Component, tea.Cmd) {
@@ -60,24 +63,54 @@ func (p *Playbar) Update(msg tea.Msg) (Component, tea.Cmd) {
 		}
 
 	case playbarTickMsg:
-		if p.playbackState == nil || !p.playbackState.IsPlaying {
+		p.mu.Lock()
+		state := p.playbackState
+		p.mu.Unlock()
+
+		if state == nil || !state.IsPlaying {
 			p.ticking = false
 			return p, nil
 		}
 
-		if p.elapsedMs >= p.playbackState.Track.DurationMs {
+		if p.elapsedMs >= state.Track.DurationMs {
+			p.ticking = false
 			return p, p.fetchPlayback()
 		}
 
 		p.elapsedMs += 1000
 		return p, p.tickCmd()
 
+	case syncPollMsg:
+		var cmds []tea.Cmd
+		cmds = append(cmds, startSyncPoll(p.playbackService))
+
+		if m.state == nil {
+			return p, tea.Batch(cmds...)
+		}
+
+		p.mu.Lock()
+		current := p.playbackState
+		changed := current == nil ||
+			current.Track.ID != m.state.Track.ID ||
+			current.IsPlaying != m.state.IsPlaying
+		if changed {
+			p.playbackState = m.state
+			p.elapsedMs = m.state.ProgressMs
+		}
+		p.mu.Unlock()
+
+		if changed && m.state.IsPlaying && !p.ticking {
+			p.ticking = true
+			cmds = append(cmds, p.tickCmd())
+		}
+		return p, tea.Batch(cmds...)
+
 	case playbarSyncMsg:
 		p.mu.Lock()
 		p.playbackState = &m.state
 		p.elapsedMs = m.state.ProgressMs
 		p.mu.Unlock()
-		if p.playbackState.IsPlaying && !p.ticking {
+		if m.state.IsPlaying && !p.ticking {
 			p.ticking = true
 			return p, p.tickCmd()
 		}
@@ -88,12 +121,11 @@ func (p *Playbar) Update(msg tea.Msg) (Component, tea.Cmd) {
 		p.playbackState = &m
 		p.elapsedMs = m.ProgressMs
 		p.mu.Unlock()
-		if p.playbackState.IsPlaying && !p.ticking {
+		if m.IsPlaying && !p.ticking {
 			p.ticking = true
 			return p, p.tickCmd()
 		}
 		return p, nil
-
 	}
 
 	return p, nil
@@ -127,13 +159,15 @@ func (p *Playbar) togglePlayCmd() tea.Cmd {
 		} else {
 			err = p.playbackService.ResumePlayback()
 		}
-
 		if err != nil {
-			return nil
+			return errMsg{Err: err}
 		}
 
 		time.Sleep(300 * time.Millisecond)
-		state, _ := p.playbackService.GetCurrentPlaybackState()
+		state, err := p.playbackService.GetCurrentPlaybackState()
+		if err != nil {
+			return errMsg{Err: err}
+		}
 		if state != nil {
 			return *state
 		}
@@ -143,9 +177,15 @@ func (p *Playbar) togglePlayCmd() tea.Cmd {
 
 func (p *Playbar) nextCmd() tea.Cmd {
 	return func() tea.Msg {
-		p.playbackService.NextTrack()
+		err := p.playbackService.NextTrack()
+		if err != nil {
+			return errMsg{Err: err}
+		}
 		time.Sleep(500 * time.Millisecond)
-		state, _ := p.playbackService.GetCurrentPlaybackState()
+		state, err := p.playbackService.GetCurrentPlaybackState()
+		if err != nil {
+			return errMsg{Err: err}
+		}
 		if state != nil {
 			return *state
 		}
@@ -155,9 +195,15 @@ func (p *Playbar) nextCmd() tea.Cmd {
 
 func (p *Playbar) previousCmd() tea.Cmd {
 	return func() tea.Msg {
-		p.playbackService.PreviousTrack()
+		err := p.playbackService.PreviousTrack()
+		if err != nil {
+			return errMsg{Err: err}
+		}
 		time.Sleep(500 * time.Millisecond)
-		state, _ := p.playbackService.GetCurrentPlaybackState()
+		state, err := p.playbackService.GetCurrentPlaybackState()
+		if err != nil {
+			return errMsg{Err: err}
+		}
 		if state != nil {
 			return *state
 		}
@@ -165,27 +211,20 @@ func (p *Playbar) previousCmd() tea.Cmd {
 	}
 }
 
-
 func (p *Playbar) OnMessage(t MsgType, msg tea.Msg) tea.Cmd {
 	if t == MsgPlayTrack {
 		if playTrackMsg, ok := msg.(PlayTrackMsg); ok {
-			// play then get the updated state to update
 			return func() tea.Msg {
 				err := p.playbackService.Play(playTrackMsg.TrackURI, playTrackMsg.PlaylistURI)
+				if err != nil {
+					return errMsg{Err: err}
+				}
 				time.Sleep(300 * time.Millisecond)
 				state, err := p.playbackService.GetCurrentPlaybackState()
 				if err != nil {
 					return errMsg{Err: err}
 				}
 				return playbarSyncMsg{state: *state}
-			}
-		}
-	}
-
-	if t == MsgPlaybackUpdate {
-		if state, ok := msg.(entities.PlaybackState); ok {
-			return func() tea.Msg {
-				return playbarSyncMsg{state: state}
 			}
 		}
 	}
@@ -251,13 +290,11 @@ func renderProgressBar(currentMs int, totalMs int, width int) string {
 	}
 
 	fraction := float64(currentMs) / float64(totalMs)
-	barWidth := width
-
-	filled := int(fraction * float64(barWidth))
-	if filled > barWidth {
-		filled = barWidth
+	filled := int(fraction * float64(width))
+	if filled > width {
+		filled = width
 	}
-	empty := barWidth - filled
+	empty := width - filled
 
 	return strings.Repeat("━", filled) + strings.Repeat("─", empty)
 }
@@ -267,10 +304,6 @@ func formatDuration(ms int) string {
 	minutes := seconds / 60
 	seconds = seconds % 60
 	return fmt.Sprintf("%d:%02d", minutes, seconds)
-}
-
-type syncPollMsg struct {
-	state *entities.PlaybackState
 }
 
 func startSyncPoll(svc *service.PlaybackService) tea.Cmd {
