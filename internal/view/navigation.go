@@ -8,8 +8,6 @@ import (
 )
 
 type Navigation struct {
-	selected    int
-	items       []string
 	focused     bool
 	searching   bool
 	searchInput textinput.Model
@@ -21,67 +19,62 @@ func NewNavigation(bus *MessageBus) *Navigation {
 	ti.Placeholder = "Search songs, artists..."
 	ti.CharLimit = 100
 	ti.Width = 30
-
-	return &Navigation{
-		selected:    1,
-		items:       []string{"🔍 Search", "🏠 Home", "📚 Browse"},
-		focused:     false,
+	self := &Navigation{
 		searchInput: ti,
 		bus:         bus,
 	}
+	bus.Subscribe(MsgFocusSearch, self)
+	return self
+}
+
+func (n *Navigation) OnMessage(t MsgType, msg tea.Msg) tea.Cmd {
+	
+	if t == MsgFocusSearch {
+		return func() tea.Msg {
+			return FocusSearchMsg{}
+		}
+	}
+
+	return nil
 }
 
 func (n *Navigation) Update(msg tea.Msg) (Component, tea.Cmd) {
 	var cmd tea.Cmd
 
-	if n.searching {
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			switch msg.String() {
-			case "esc":
+	switch msg := msg.(type) {
+	case FocusSearchMsg:
+        n.searching = true
+        n.searchInput.Focus()
+        return n, textinput.Blink
+
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "esc":
+			if n.searching {
 				n.searching = false
 				n.searchInput.Blur()
 				n.searchInput.SetValue("")
 				return n, nil
-			case "enter":
+			}
+		case "enter":
+			if n.searching {
 				query := n.searchInput.Value()
 				if query != "" {
 					n.searching = false
 					n.searchInput.Blur()
-					cmd = n.bus.Publish(MsgSearch, SearchMsg{Query: query})
-					return n, cmd
+					return n, n.bus.Publish(MsgSearch, SearchMsg{Query: query})
 				}
 				return n, nil
 			}
+			// enter while focused but not yet searching — activate search
+			n.searching = true
+			n.searchInput.Focus()
+			return n, textinput.Blink
 		}
-		n.searchInput, cmd = n.searchInput.Update(msg)
-		return n, cmd
 	}
 
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "left", "h":
-			if n.selected > 0 {
-				n.selected--
-			}
-		case "right", "l":
-			if n.selected < len(n.items)-1 {
-				n.selected++
-			}
-		case "1":
-			n.selected = 0
-		case "2":
-			n.selected = 1
-		case "3":
-			n.selected = 2
-		case "enter":
-			if n.selected == 0 {
-				n.searching = true
-				n.searchInput.Focus()
-				return n, textinput.Blink
-			}
-		}
+	if n.searching {
+		n.searchInput, cmd = n.searchInput.Update(msg)
 	}
 
 	return n, cmd
@@ -103,38 +96,33 @@ func (n *Navigation) Focus() {
 func (n *Navigation) Focused() bool {
 	return n.focused
 }
-
 func (n *Navigation) View(width, height int) string {
 	halfWidth := width / 2
-
-	var parts []string
-	for i, txt := range n.items {
-		style := ItemNavStyle.MarginRight(2)
-		if i == n.selected {
-			style = SelectedNavStyle.MarginRight(2)
-		}
-		parts = append(parts, style.Render(txt))
-	}
-	nav := lipgloss.JoinHorizontal(lipgloss.Top, parts...)
 
 	logoStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#1db954"))
 	logo := logoStyle.Width(halfWidth).Align(lipgloss.Right).Render(assets.SpotifyLogo)
 
-	var left string
+	inputStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		Padding(0, 1).
+		Width(halfWidth - 4)
+
 	if n.searching {
-		inputStyle := lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("#1db954")).
-			Padding(0, 1).
-			Width(halfWidth - 4)
-		searchInput := inputStyle.Render(n.searchInput.View())
-		left = lipgloss.NewStyle().PaddingLeft(1).Width(halfWidth).Render(
-			lipgloss.JoinVertical(lipgloss.Left, nav, searchInput),
-		)
+		inputStyle = inputStyle.BorderForeground(lipgloss.Color("#1db954"))
 	} else {
-		left = lipgloss.NewStyle().PaddingLeft(1).Width(halfWidth).Render(nav)
+		inputStyle = inputStyle.BorderForeground(lipgloss.Color("#535353"))
 	}
-	
+
+	searchInput := inputStyle.Render(n.searchInput.View())
+	inputHeight := lipgloss.Height(searchInput)
+	topPadding := (height - inputHeight) / 2
+
+	left := lipgloss.NewStyle().
+		PaddingLeft(1).
+		PaddingTop(topPadding).
+		Width(halfWidth).
+		Render(searchInput)
+
 	content := lipgloss.JoinHorizontal(lipgloss.Top, left, logo)
 
 	border := borderStyle.Copy().

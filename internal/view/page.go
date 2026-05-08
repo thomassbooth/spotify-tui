@@ -56,6 +56,11 @@ func (p *Page) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.String() == "q" {
 			return p, tea.Quit
 		}
+		if m.String() == "/" {
+			p.focusNav()
+			cmds = append(cmds, p.bus.Publish(MsgFocusSearch, FocusSearchMsg{}))
+			return p, tea.Batch(cmds...)
+		}
 		if m.String() == "tab" {
 			p.cycleFocus()
 			return p, nil
@@ -82,7 +87,7 @@ func (p *Page) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			p.playbar, cmd = p.playbar.Update(msg)
 			cmds = append(cmds, cmd)
 		}
-
+	
 	case errMsg:
 		// TODO: surface errors to the user (status bar, modal, etc.)
 		_ = m
@@ -96,6 +101,10 @@ func (p *Page) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, cmd)
 		}
 		p.tracks, cmd = p.tracks.Update(msg)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+		p.navigation, cmd = p.navigation.Update(msg)
 		if cmd != nil {
 			cmds = append(cmds, cmd)
 		}
@@ -114,6 +123,13 @@ func (p *Page) cycleFocus() {
 			return
 		}
 	}
+}
+
+func (p *Page) focusNav() {
+	p.navigation.Focus()
+	p.sidebar.Blur()
+	p.tracks.Blur()
+	p.playbar.Blur()
 }
 
 func (p *Page) View() string {

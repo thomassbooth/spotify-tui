@@ -27,6 +27,7 @@ const (
 	MsgToggleQueue      MsgType = "toggle.queue"
 	MsgToggleShuffle    MsgType = "toggle.shuffle"
 	MsgSearch			MsgType = "search"
+	MsgFocusSearch      MsgType = "focus.search"
 )
 
 // Actual message structs
@@ -34,6 +35,7 @@ type TabChangedMsg struct {
 	Tab int // 0=Search, 1=Home, 2=Browse
 }
 
+type FocusSearchMsg struct{}
 type PlaylistSelectedMsg struct {
 	ID   string
 	Name string
