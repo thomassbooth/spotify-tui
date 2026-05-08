@@ -63,6 +63,10 @@ func (p *Page) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, p.bus.Publish(MsgToggleQueue, ToggleQueueMsg{}))
 			return p, tea.Batch(cmds...)
 		}
+		if m.String() == "S" {
+			cmds = append(cmds, p.bus.Publish(MsgToggleShuffle, ToggleShuffleMsg{}))
+			return p, tea.Batch(cmds...)
+		}
 
 		if p.navigation.Focused() {
 			p.navigation, cmd = p.navigation.Update(msg)

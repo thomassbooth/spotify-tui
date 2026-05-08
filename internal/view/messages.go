@@ -25,6 +25,7 @@ const (
 	MsgPlaybackUpdate   MsgType = "playback.update"
 	MsgQueueUpdate      MsgType = "queue.update"
 	MsgToggleQueue      MsgType = "toggle.queue"
+	MsgToggleShuffle    MsgType = "toggle.shuffle"
 )
 
 // Actual message structs
@@ -62,6 +63,7 @@ type QueueUpdateMsg struct {
 
 type ToggleQueueMsg struct{}
 
+type ToggleShuffleMsg struct{}
 // Internal messages for async operations
 type tracksLoadedMsg struct {
 	tracks []entities.Track

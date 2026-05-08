@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 
 	"github.com/google/go-querystring/query"
 	"golang.org/x/oauth2"
@@ -36,7 +37,7 @@ func (c *Client) Post(ctx context.Context, path string, params, body interface{}
 
 func (c *Client) Put(ctx context.Context, path string, params, body interface{}) ([]byte, error) {
 	return c.do(ctx, http.MethodPut, path, params, body)
-}
+}	
 
 func (c *Client) Delete(ctx context.Context, path string, params, body interface{}) ([]byte, error) {
 	return c.do(ctx, http.MethodDelete, path, params, body)
@@ -44,6 +45,7 @@ func (c *Client) Delete(ctx context.Context, path string, params, body interface
 
 func (c *Client) do(ctx context.Context, method, path string, params, body interface{}) ([]byte, error) {
 	url, err := c.addQueryParams(path, params)
+
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +65,6 @@ func (c *Client) do(ctx context.Context, method, path string, params, body inter
 		return nil, fmt.Errorf("http request failed: %w", err)
 	}
 	defer resp.Body.Close()
-
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("error reading response body: %w", err)
@@ -73,18 +74,42 @@ func (c *Client) do(ctx context.Context, method, path string, params, body inter
 }
 
 func (c *Client) addQueryParams(path string, params interface{}) (string, error) {
-	url := baseURL + path
-	if params != nil {
+	fullURL := baseURL + path
+
+	if params == nil {
+		return fullURL, nil
+	}
+
+	var values url.Values
+
+	switch p := params.(type) {
+
+	case map[string]interface{}:
+		values = url.Values{}
+
+		for k, v := range p {
+			values.Set(k, fmt.Sprint(v))
+		}
+
+	case url.Values:
+		values = p
+
+	default:
 		v, err := query.Values(params)
 		if err != nil {
 			return "", fmt.Errorf("encode params: %w", err)
 		}
-		if encoded := v.Encode(); encoded != "" {
-			url = url + "?" + encoded
-		}
+
+		values = v
 	}
 
-	return url, nil
+	encoded := values.Encode()
+
+	if encoded != "" {
+		fullURL += "?" + encoded
+	}
+
+	return fullURL, nil
 }
 
 func (c *Client) createBody(body interface{}) (io.Reader, error) {

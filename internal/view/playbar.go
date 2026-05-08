@@ -39,6 +39,7 @@ func NewPlaybar(bus *MessageBus, playbackService *service.PlaybackService) *Play
 
 	bus.Subscribe(MsgPlaybackUpdate, p)
 	bus.Subscribe(MsgPlayTrack, p)
+	bus.Subscribe(MsgToggleShuffle, p)
 
 	return p
 }
@@ -92,7 +93,8 @@ func (p *Playbar) Update(msg tea.Msg) (Component, tea.Cmd) {
 		current := p.playbackState
 		changed := current == nil ||
 			current.Track.ID != m.state.Track.ID ||
-			current.IsPlaying != m.state.IsPlaying
+			current.IsPlaying != m.state.IsPlaying ||
+			current.ShuffleState != m.state.ShuffleState
 		if changed {
 			p.playbackState = m.state
 			p.elapsedMs = m.state.ProgressMs
@@ -228,6 +230,29 @@ func (p *Playbar) OnMessage(t MsgType, msg tea.Msg) tea.Cmd {
 			}
 		}
 	}
+
+	if t == MsgToggleShuffle {
+		return func() tea.Msg {
+			p.mu.Lock()
+			currentShuffle := p.playbackState != nil && p.playbackState.ShuffleState
+			p.mu.Unlock()
+			
+			err := p.playbackService.ToggleShufflePlayback(!currentShuffle)
+			if err != nil {
+				return errMsg{Err: err}
+			}
+			time.Sleep(300 * time.Millisecond)
+			state, err := p.playbackService.GetCurrentPlaybackState()
+			if err != nil {
+				return errMsg{Err: err}
+			}
+			if state != nil {
+				return playbarSyncMsg{state: *state}
+			}
+			return nil
+		}
+	}
+
 	return nil
 }
 
@@ -271,7 +296,14 @@ func (p *Playbar) View(width, height int) string {
 	progressWidth := width / 3
 	bar := renderProgressBar(elapsed, track.DurationMs, progressWidth)
 	times := fmt.Sprintf("%s / %s", formatDuration(elapsed), formatDuration(track.DurationMs))
-	progress := fmt.Sprintf("%s %s", bar, times)
+
+	shuffleColor := lipgloss.Color("#535353")
+	if state.ShuffleState {
+		shuffleColor = lipgloss.Color("#1db954")
+	}
+	shuffle := lipgloss.NewStyle().Foreground(shuffleColor).Render("⇄")
+
+	progress := fmt.Sprintf("%s %s %s", bar, times, shuffle)
 
 	content := lipgloss.JoinVertical(lipgloss.Left, song, artist, progress)
 	paddedContent := lipgloss.NewStyle().PaddingLeft(2).Render(content)

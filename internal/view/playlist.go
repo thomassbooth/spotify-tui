@@ -194,6 +194,7 @@ func (s *PlaylistTracks) Update(msg tea.Msg) (Component, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
+		
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, defaultKeyMap.Tab),

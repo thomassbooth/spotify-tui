@@ -73,13 +73,6 @@ func (s *PlaybackService) Seek(ctx context.Context, positionMs int) error {
 	return err
 }
 
-func (s *PlaybackService) ToggleShuffle(ctx context.Context, state bool) error {
-	_, err := s.client.Put(ctx, "/me/player/shuffle", nil, map[string]interface{}{
-		"state": state,
-	})
-	return err
-}
-
 func (s *PlaybackService) ToggleRepeat(ctx context.Context, state string) error {
 	_, err := s.client.Put(ctx, "/me/player/repeat", nil, map[string]interface{}{
 		"state": state,
@@ -128,9 +121,9 @@ func (s *PlaybackService) PreviousTrack() error {
 func (s *PlaybackService) ToggleShufflePlayback(state bool) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	_, err := s.client.Put(ctx, "/me/player/shuffle", nil, map[string]interface{}{
+	_, err := s.client.Put(ctx, "/me/player/shuffle", map[string]interface{}{
 		"state": state,
-	})
+	}, nil)
 	return err
 }
 
