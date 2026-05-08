@@ -26,6 +26,7 @@ const (
 	MsgQueueUpdate      MsgType = "queue.update"
 	MsgToggleQueue      MsgType = "toggle.queue"
 	MsgToggleShuffle    MsgType = "toggle.shuffle"
+	MsgSearch			MsgType = "search"
 )
 
 // Actual message structs
@@ -39,6 +40,9 @@ type PlaylistSelectedMsg struct {
 	URI  string
 }
 
+type SearchMsg struct {
+	Query string
+}
 type TrackSelectedMsg struct {
 	ID   string
 	Name string

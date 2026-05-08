@@ -298,10 +298,14 @@ func (p *Playbar) View(width, height int) string {
 	times := fmt.Sprintf("%s / %s", formatDuration(elapsed), formatDuration(track.DurationMs))
 
 	shuffleColor := lipgloss.Color("#535353")
+	shuffleText := "unshuffled"
+	shuffleBold := false
 	if state.ShuffleState {
 		shuffleColor = lipgloss.Color("#1db954")
+		shuffleText = "shuffled"
+		shuffleBold = true
 	}
-	shuffle := lipgloss.NewStyle().Foreground(shuffleColor).Render("⇄")
+	shuffle := lipgloss.NewStyle().Bold(shuffleBold).PaddingLeft(1).Foreground(shuffleColor).Render(shuffleText)
 
 	progress := fmt.Sprintf("%s %s %s", bar, times, shuffle)
 

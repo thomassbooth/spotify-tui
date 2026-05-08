@@ -33,9 +33,10 @@ func NewPage(playlistService *service.PlaylistService, playbackService *service.
 	sidebar.Focus()
 	tracks := NewPlaylistTracks(bus, playlistService, playbackService)
 	playbar := NewPlaybar(bus, playbackService)
+	nav := NewNavigation(bus)
 	return &Page{
 		sidebar:    sidebar,
-		navigation: NewNavigation(),
+		navigation: nav,
 		tracks:     tracks,
 		playbar:    playbar,
 		bus:        bus,

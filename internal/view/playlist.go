@@ -27,7 +27,7 @@ type playlistDelegate struct {
 	list.DefaultDelegate
 }
 
-func (d playlistDelegate) Height() int { return 2 }
+func (d playlistDelegate) Height() int { return 1 }
 
 func (d playlistDelegate) Render(w io.Writer, m list.Model, index int, item list.Item) {
 	i, ok := item.(playlistItem)
@@ -81,7 +81,6 @@ func NewPlaylistTracks(bus *MessageBus, playlistService *service.PlaylistService
 	l.Title = "Playlist Tracks"
 	l.SetShowHelp(false)
 	l.SetShowStatusBar(false)
-	l.SetShowPagination(false)
 
 	self := &PlaylistTracks{
 		tracks:           l,
@@ -237,14 +236,15 @@ func (s *PlaylistTracks) Focused() bool {
 }
 
 func (s *PlaylistTracks) View(width, height int) string {
-	s.tracks.SetSize(width, height)
 	border := borderStyle.Copy().
 		Width(width).
 		Height(height)
-
+	
 	if s.Focused() {
 		border = border.BorderForeground(lipgloss.Color("#1db954"))
 	}
+
+	s.tracks.SetSize(width, height)
 
 	return border.Render(s.tracks.View())
 }
