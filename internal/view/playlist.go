@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -27,7 +28,9 @@ type playlistDelegate struct {
 	list.DefaultDelegate
 }
 
-func (d playlistDelegate) Height() int { return 1 }
+func (d playlistDelegate) Height() int { return 2 }
+
+func (d playlistDelegate) Spacing() int { return 1 }
 
 func (d playlistDelegate) Render(w io.Writer, m list.Model, index int, item list.Item) {
 	i, ok := item.(playlistItem)
@@ -36,8 +39,8 @@ func (d playlistDelegate) Render(w io.Writer, m list.Model, index int, item list
 	}
 
 	var (
-		title = i.name
-
+		title       = i.name
+		artist      = strings.Join(i.artists, ", ")
 		isSelected  = index == m.Index()
 		s           = lipgloss.NewStyle().Padding(0, 0, 0, 2)
 		selectedStr = " "
@@ -49,28 +52,32 @@ func (d playlistDelegate) Render(w io.Writer, m list.Model, index int, item list
 			Foreground(lipgloss.Color("#1db954")).
 			Bold(true).
 			Render(title)
-
+		artist = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#1db954")).
+			Render(artist)
 	} else {
 		title = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#FAFAFA")).
 			Render(title)
-
+		artist = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#888888")).
+			Render(artist)
 	}
 
-	fmt.Fprintf(w, s.Render(selectedStr+" "+title))
+	fmt.Fprintf(w, s.Render(selectedStr+" "+title+"\n   "+artist))
 }
 
 // ---------------------------------------------------------------------
 // 3. Sidebar component
 // ---------------------------------------------------------------------
 type PlaylistTracks struct {
-	tracks           list.Model
-	focused          bool
-	bus              *MessageBus
-	playlistService  *service.PlaylistService
-	playbackService  *service.PlaybackService
-	showingQueue     bool
-	lastPlaylist     PlaylistSelectedMsg
+	tracks          list.Model
+	focused         bool
+	bus             *MessageBus
+	playlistService *service.PlaylistService
+	playbackService *service.PlaybackService
+	showingQueue    bool
+	lastPlaylist    PlaylistSelectedMsg
 }
 
 func NewPlaylistTracks(bus *MessageBus, playlistService *service.PlaylistService, playbackService *service.PlaybackService) *PlaylistTracks {
@@ -83,11 +90,11 @@ func NewPlaylistTracks(bus *MessageBus, playlistService *service.PlaylistService
 	l.SetShowStatusBar(false)
 
 	self := &PlaylistTracks{
-		tracks:           l,
-		focused:          false,
-		bus:              bus,
-		playlistService:  playlistService,
-		playbackService:  playbackService,
+		tracks:          l,
+		focused:         false,
+		bus:             bus,
+		playlistService: playlistService,
+		playbackService: playbackService,
 	}
 
 	bus.Subscribe(MsgPlaylistSelected, self)
@@ -193,7 +200,7 @@ func (s *PlaylistTracks) Update(msg tea.Msg) (Component, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
-		
+
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, defaultKeyMap.Tab),
@@ -239,7 +246,7 @@ func (s *PlaylistTracks) View(width, height int) string {
 	border := borderStyle.Copy().
 		Width(width).
 		Height(height)
-	
+
 	if s.Focused() {
 		border = border.BorderForeground(lipgloss.Color("#1db954"))
 	}

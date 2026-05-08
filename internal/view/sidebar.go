@@ -44,6 +44,8 @@ type sidebarDelegate struct {
 
 func (d sidebarDelegate) Height() int { return 2 }
 
+func (d sidebarDelegate) Spacing() int { return 1 }
+
 func (d sidebarDelegate) Render(w io.Writer, m list.Model, index int, item list.Item) {
 	i, ok := item.(sidebarItem)
 	if !ok {
@@ -83,8 +85,7 @@ func (d sidebarDelegate) Render(w io.Writer, m list.Model, index int, item list.
 			Render(plType)
 
 	}
-
-	fmt.Fprintf(w, s.Render(selectedStr+" "+title+"\n  "+plType+" - "+owner))
+	fmt.Fprintf(w, s.Render(selectedStr+" "+title+"\n   "+plType+" - "+owner))
 }
 
 // ---------------------------------------------------------------------
@@ -164,8 +165,7 @@ func (s *Sidebar) Update(msg tea.Msg) (Component, tea.Cmd) {
 
 var borderStyle = lipgloss.NewStyle().
 	BorderStyle(lipgloss.NormalBorder()).
-	BorderForeground(lipgloss.Color("#626262")).
-	Padding(0, 0)
+	BorderForeground(lipgloss.Color("#626262"))
 
 func (s *Sidebar) Blur() {
 	s.focused = false
