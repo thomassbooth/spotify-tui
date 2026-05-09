@@ -62,7 +62,8 @@ func (n *Navigation) Update(msg tea.Msg) (Component, tea.Cmd) {
 				if query != "" {
 					n.searching = false
 					n.searchInput.Blur()
-					return n, n.bus.Publish(MsgSearch, SearchMsg{Query: query})
+					cmd = n.bus.Publish(MsgSearch, SearchResultsMsg{Query: query})
+					return n, cmd
 				}
 				return n, nil
 			}
@@ -100,7 +101,7 @@ func (n *Navigation) View(width, height int) string {
 	halfWidth := width / 2
 
 	logoStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#1db954"))
-	logo := logoStyle.Width(halfWidth).Align(lipgloss.Right).Render(assets.SpotifyLogo)
+	logo := logoStyle.Width(halfWidth).Align(lipgloss.Right).PaddingRight(1).Render(assets.SpotifyLogo)
 
 	inputStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).

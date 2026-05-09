@@ -85,7 +85,7 @@ func (d sidebarDelegate) Render(w io.Writer, m list.Model, index int, item list.
 			Render(plType)
 
 	}
-	fmt.Fprintf(w, s.Render(selectedStr+" "+title+"\n   "+plType+" - "+owner))
+	fmt.Fprintf(w, s.Render(selectedStr+" "+title+"\n  "+plType+" - "+owner))
 }
 
 // ---------------------------------------------------------------------

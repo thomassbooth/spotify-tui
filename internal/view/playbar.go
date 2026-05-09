@@ -279,7 +279,7 @@ func (p *Playbar) View(width, height int) string {
 	if state == nil || state.Track.ID == "" {
 		return borderStyle.Copy().
 			Width(width).
-			Height(height).
+			Height(height).PaddingLeft(1).
 			Render("Nothing playing right now")
 	}
 

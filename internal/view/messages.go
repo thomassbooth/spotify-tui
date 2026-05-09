@@ -30,7 +30,16 @@ const (
 	MsgFocusSearch      MsgType = "focus.search"
 )
 
+
 // Actual message structs
+
+type SearchResultsMsg struct {
+	Tracks  []entities.Track
+	Albums  []entities.Album
+	Artists []entities.Artist
+	Playlists []entities.Playlist
+	Query string
+}
 type TabChangedMsg struct {
 	Tab int // 0=Search, 1=Home, 2=Browse
 }
