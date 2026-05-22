@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	authUrl  = "https://accounts.spotify.com/authorize"
-	tokenUrl = "https://accounts.spotify.com/api/token"
+	authURL  = "https://accounts.spotify.com/authorize"
+	tokenURL = "https://accounts.spotify.com/api/token"
 )
 
 var requiredScopes = []string{
@@ -28,43 +28,55 @@ var requiredScopes = []string{
 	"user-read-email",
 }
 
-// Authenticator handles OAuth2 token operations
-type Authenticator struct {
+// Authenticator is the interface the flow depends on
+type Authenticator interface {
+	GetAuthURL(state string) string
+	Exchange(ctx context.Context, code string) (*oauth2.Token, error)
+	RefreshToken(ctx context.Context, token *oauth2.Token) (*oauth2.Token, error)
+	TokenSource(ctx context.Context, token *oauth2.Token) oauth2.TokenSource
+	SetCallbackURL(url string)
+}
+
+// OAuthAuthenticator is the real implementation
+type OAuthAuthenticator struct {
 	config *oauth2.Config
 }
 
-func NewAuthenticator(clientID, clientSecret, redirectURI string) *Authenticator {
-	return &Authenticator{
+func NewAuthenticator(clientID, clientSecret, redirectURI string) *OAuthAuthenticator {
+	return &OAuthAuthenticator{
 		config: &oauth2.Config{
 			ClientID:     clientID,
 			ClientSecret: clientSecret,
 			RedirectURL:  redirectURI,
 			Scopes:       requiredScopes,
 			Endpoint: oauth2.Endpoint{
-				AuthURL:  authUrl,
-				TokenURL: tokenUrl,
+				AuthURL:  authURL,
+				TokenURL: tokenURL,
 			},
 		},
 	}
 }
 
-// GetAuthURL generates the authorization URL for the user to visit
-func (a *Authenticator) GetAuthURL(state string) string {
+func (a *OAuthAuthenticator) SetCallbackURL(url string) {
+	a.config.RedirectURL = url
+}
+
+func (a *OAuthAuthenticator) GetAuthURL(state string) string {
 	return a.config.AuthCodeURL(state, oauth2.AccessTypeOffline)
 }
 
-// Exchange converts an authorization code into a token
-func (a *Authenticator) Exchange(ctx context.Context, code string) (*oauth2.Token, error) {
+func (a *OAuthAuthenticator) Exchange(ctx context.Context, code string) (*oauth2.Token, error) {
 	return a.config.Exchange(ctx, code)
 }
 
-// RefreshToken obtains a new access token using a refresh token
-func (a *Authenticator) RefreshToken(ctx context.Context, token *oauth2.Token) (*oauth2.Token, error) {
-	tokenSource := a.config.TokenSource(ctx, token)
-	return tokenSource.Token()
+func (a *OAuthAuthenticator) RefreshToken(ctx context.Context, token *oauth2.Token) (*oauth2.Token, error) {
+	return a.config.TokenSource(ctx, token).Token()
 }
 
-// GenerateState creates a cryptographically secure random state string
+func (a *OAuthAuthenticator) TokenSource(ctx context.Context, token *oauth2.Token) oauth2.TokenSource {
+	return a.config.TokenSource(ctx, token)
+}
+
 func GenerateState() (string, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {

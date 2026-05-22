@@ -9,43 +9,31 @@ import (
 	"golang.org/x/oauth2"
 )
 
-// AuthFlow orchestrates the complete OAuth authentication flow
+// Flow is the interface the client depends on
+type Flow interface {
+	Authenticate(ctx context.Context, serverAddr string) (*oauth2.Token, error)
+	TokenSource(ctx context.Context, token *oauth2.Token) oauth2.TokenSource
+}
+
+// AuthFlow is the real implementation
 type AuthFlow struct {
-	auth    *Authenticator
+	auth    Authenticator
 	timeout time.Duration
 }
 
-// AuthFlowConfig configures the authentication flow
-type AuthFlowConfig struct {
-	ClientID     string
-	ClientSecret string
-	ServerAddr   string        // e.g., "localhost:8888" or "localhost:0" for random port
-	Timeout      time.Duration // How long to wait for user authorization
-}
-
-func NewAuthFlow(config AuthFlowConfig) *AuthFlow {
-	if config.Timeout == 0 {
-		config.Timeout = 2 * time.Minute
-	}
-
-	// We'll set the redirect URL after the server starts
-	auth := NewAuthenticator(config.ClientID, config.ClientSecret, "")
-
+func NewAuthFlow(auth Authenticator, timeout time.Duration) *AuthFlow {
 	return &AuthFlow{
 		auth:    auth,
-		timeout: config.Timeout,
+		timeout: timeout,
 	}
 }
 
-// Authenticate runs the complete OAuth flow and returns a token
 func (f *AuthFlow) Authenticate(ctx context.Context, serverAddr string) (*oauth2.Token, error) {
-	// Generate CSRF protection state
 	state, err := GenerateState()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate state: %w", err)
 	}
 
-	// Start callback server
 	server := NewCallbackServer(state)
 	callbackURL, err := server.Start(serverAddr)
 	if err != nil {
@@ -53,10 +41,8 @@ func (f *AuthFlow) Authenticate(ctx context.Context, serverAddr string) (*oauth2
 	}
 	defer server.Stop(context.Background())
 
-	// Update authenticator with actual callback URL
-	f.auth.config.RedirectURL = callbackURL
+	f.auth.SetCallbackURL(callbackURL)
 
-	// Generate and display auth URL
 	authURL := f.auth.GetAuthURL(state)
 	fmt.Println("\n" + strings.Repeat("=", 60))
 	fmt.Println("🎵 Spotify Authorization Required")
@@ -65,7 +51,6 @@ func (f *AuthFlow) Authenticate(ctx context.Context, serverAddr string) (*oauth2
 	fmt.Printf("Waiting for callback on %s...\n", callbackURL)
 	fmt.Println("(This will timeout in", f.timeout, ")")
 
-	// Wait for authorization code
 	waitCtx, cancel := context.WithTimeout(ctx, f.timeout)
 	defer cancel()
 
@@ -76,18 +61,15 @@ func (f *AuthFlow) Authenticate(ctx context.Context, serverAddr string) (*oauth2
 
 	fmt.Println("✓ Authorization code received, exchanging for token...")
 
-	// Exchange code for token
 	token, err := f.auth.Exchange(context.Background(), code)
 	if err != nil {
 		return nil, fmt.Errorf("token exchange failed: %w", err)
 	}
 
 	fmt.Println("✓ Successfully authenticated!")
-
 	return token, nil
 }
 
-// RefreshToken is a convenience method to refresh an existing token
-func (f *AuthFlow) RefreshToken(ctx context.Context, token *oauth2.Token) (*oauth2.Token, error) {
-	return f.auth.RefreshToken(ctx, token)
+func (f *AuthFlow) TokenSource(ctx context.Context, token *oauth2.Token) oauth2.TokenSource {
+	return f.auth.TokenSource(ctx, token)
 }

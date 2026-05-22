@@ -19,7 +19,7 @@ import (
 
 func main() {
 	if err := godotenv.Load(); err != nil {
-		log.Println("")
+		log.Println("No .env file found")
 	}
 
 	homeDir, err := os.UserHomeDir()
@@ -27,30 +27,36 @@ func main() {
 		log.Fatalf("Failed to get home directory: %v", err)
 	}
 
+	// Repositories
 	tokenPath := filepath.Join(homeDir, ".spotify-tui", "token.json")
 	tokenRepo := repository.NewTokenRepository(tokenPath)
 
-	authClient := auth.NewClient(auth.Config{
-		ClientID:     os.Getenv("SPOTIFY_CLIENT_ID"),
-		ClientSecret: os.Getenv("SPOTIFY_CLIENT_SECRET"),
-		TokenRepo:    tokenRepo,
-		ServerAddr:   "localhost:8889",
-		Timeout:      2 * time.Minute,
-	})
+	// Auth layer
+	authenticator := auth.NewAuthenticator(
+		os.Getenv("SPOTIFY_CLIENT_ID"),
+		os.Getenv("SPOTIFY_CLIENT_SECRET"),
+		"",
+	)
+	flow := auth.NewAuthFlow(authenticator, 2*time.Minute)
+	authClient := auth.NewClient(flow, tokenRepo, "localhost:8889")
 
+	// Get token source
 	ctx := context.Background()
-	token, err := authClient.GetValidToken(ctx)
+	ts, err := authClient.GetValidToken(ctx)
 	if err != nil {
 		log.Fatalf("Authentication failed: %v", err)
 	}
-
 	fmt.Println("✓ Successfully authenticated!")
 
-	spotifyClient := spotify.NewClient(token)
+	// Spotify client
+	spotifyClient := spotify.NewClient(ts, tokenRepo)
+
+	// Services
 	playlistService := service.NewPlaylistService(spotifyClient)
 	playbackService := service.NewPlaybackService(spotifyClient)
-	p := tea.NewProgram(view.NewPage(&playlistService, &playbackService))
 
+	// Run
+	p := tea.NewProgram(view.NewPage(&playlistService, &playbackService))
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Error: %v\n", err)
 	}

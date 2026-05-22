@@ -10,58 +10,33 @@ import (
 	"github.com/thomassbooth/spotify-tui/internal/repository"
 )
 
+// TokenStore is the interface the client depends on
+type TokenStore interface {
+	Save(token *oauth2.Token) error
+	Load() (*oauth2.Token, error)
+	Delete() error
+	Exists() bool
+	GetTokenInfo() (bool, time.Time, bool, time.Duration)
+}
+
 type Client struct {
-	flow       *AuthFlow
+	flow       Flow
 	serverAddr string
-	TokenRepo  *repository.TokenRepository
+	tokenStore TokenStore
 }
 
-type Config struct {
-	ClientID     string
-	ClientSecret string
-	TokenRepo    *repository.TokenRepository
-	ServerAddr   string
-	Timeout      time.Duration
-}
-
-func NewClient(cfg Config) *Client {
-	if cfg.Timeout == 0 {
-		cfg.Timeout = 2 * time.Minute
-	}
-	if cfg.ServerAddr == "" {
-		cfg.ServerAddr = "localhost:8888"
-	}
-
-	flow := NewAuthFlow(AuthFlowConfig{
-		ClientID:     cfg.ClientID,
-		ClientSecret: cfg.ClientSecret,
-		Timeout:      cfg.Timeout,
-	})
-
+func NewClient(flow Flow, tokenStore TokenStore, serverAddr string) *Client {
 	return &Client{
 		flow:       flow,
-		serverAddr: cfg.ServerAddr,
-		TokenRepo:  cfg.TokenRepo,
+		serverAddr: serverAddr,
+		tokenStore: tokenStore,
 	}
 }
 
-func (c *Client) GetValidToken(ctx context.Context) (*oauth2.Token, error) {
-	token, err := c.TokenRepo.Load()
+func (c *Client) GetValidToken(ctx context.Context) (oauth2.TokenSource, error) {
+	token, err := c.tokenStore.Load()
 	if err == nil {
-		if token.Valid() {
-			return token, nil
-		}
-
-		if token.RefreshToken != "" {
-			newToken, err := c.flow.RefreshToken(ctx, token)
-			if err == nil {
-				if saveErr := c.TokenRepo.Save(newToken); saveErr != nil {
-					fmt.Printf("Warning: failed to save refreshed token: %v\n", saveErr)
-				}
-				return newToken, nil
-			}
-			fmt.Printf("Token refresh failed: %v\n", err)
-		}
+		return c.flow.TokenSource(ctx, token), nil
 	}
 
 	fmt.Println("Authentication required...")
@@ -70,24 +45,23 @@ func (c *Client) GetValidToken(ctx context.Context) (*oauth2.Token, error) {
 		return nil, fmt.Errorf("authentication failed: %w", err)
 	}
 
-	if err := c.TokenRepo.Save(token); err != nil {
+	if err := c.tokenStore.Save(token); err != nil {
 		fmt.Printf("Warning: failed to save token: %v\n", err)
 	}
 
-	return token, nil
+	return c.flow.TokenSource(ctx, token), nil
 }
 
 func (c *Client) Logout() error {
-	return c.TokenRepo.Delete()
+	return c.tokenStore.Delete()
 }
 
 func (c *Client) HasCachedToken() bool {
-	return c.TokenRepo.Exists()
+	return c.tokenStore.Exists()
 }
 
 func (c *Client) GetTokenInfo() (*TokenInfo, error) {
-	valid, expiry, hasRefresh, expiresIn := c.TokenRepo.GetTokenInfo()
-
+	valid, expiry, hasRefresh, expiresIn := c.tokenStore.GetTokenInfo()
 	return &TokenInfo{
 		Valid:      valid,
 		Expiry:     expiry,
@@ -102,3 +76,6 @@ type TokenInfo struct {
 	HasRefresh bool
 	ExpiresIn  time.Duration
 }
+
+// Ensure TokenRepository satisfies TokenStore at compile time
+var _ TokenStore = (*repository.TokenRepository)(nil)
