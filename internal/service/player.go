@@ -4,15 +4,22 @@ import (
 	"context"
 	"time"
 
-	"github.com/thomassbooth/spotify-tui/internal/client/spotify"
 	"github.com/thomassbooth/spotify-tui/internal/entities"
 )
 
-type PlaybackService struct {
-	client *spotify.Client
+// service/player.go
+type playbackClient interface {
+    GetCurrentPlayback(ctx context.Context) (*entities.PlaybackState, error)
+    GetQueue(ctx context.Context) ([]entities.Track, error)
+    Put(ctx context.Context, path string, params, body interface{}) ([]byte, error)
+    Post(ctx context.Context, path string, params, body interface{}) ([]byte, error)
 }
 
-func NewPlaybackService(client *spotify.Client) PlaybackService {
+type PlaybackService struct {
+    client playbackClient
+}
+
+func NewPlaybackService(client playbackClient) PlaybackService {
 	return PlaybackService{
 		client: client,
 	}
@@ -172,9 +179,5 @@ func PollInterval() time.Duration {
 }
 
 func (s *PlaybackService) GetQueue(ctx context.Context) ([]entities.Track, error) {
-	resp, err := s.client.GetQueue(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return resp.Tracks, nil
+	return s.client.GetQueue(ctx)
 }

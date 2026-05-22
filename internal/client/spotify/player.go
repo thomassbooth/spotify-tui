@@ -27,16 +27,16 @@ type QueueResponse struct {
 	Tracks []entities.Track `json:"queue"`
 }
 
-func (client *Client) GetQueue(ctx context.Context) (*QueueResponse, error) {
+func (client *Client) GetQueue(ctx context.Context) ([]entities.Track, error) {
 	data, err := client.Get(ctx, "/me/player/queue", nil)
 	if err != nil {
 		return nil, err
 	}
 
-	var resp QueueResponse
+	var resp []entities.Track
 	if err := json.Unmarshal(data, &resp); err != nil {
-		return nil, fmt.Errorf("Cant decode json response from queue: %w", err)
+		return nil, fmt.Errorf("failed to decode queue response: %w", err)
 	}
 
-	return &resp, nil
+	return resp, nil
 }

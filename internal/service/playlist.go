@@ -4,15 +4,20 @@ import (
 	"context"
 	"time"
 
-	"github.com/thomassbooth/spotify-tui/internal/client/spotify"
+	"github.com/thomassbooth/spotify-tui/internal/client/spotify/response"
 	"github.com/thomassbooth/spotify-tui/internal/entities"
 )
 
-type PlaylistService struct {
-	client *spotify.Client
+type playlistClient interface {
+    GetPlaylists(ctx context.Context) (*response.GetPlaylistsResponse, error)
+    GetPlaylistItems(ctx context.Context, id string) (*response.GetPlaylistItemsResponse, error)
 }
 
-func NewPlaylistService(client *spotify.Client) PlaylistService {
+type PlaylistService struct {
+    client playlistClient
+}
+
+func NewPlaylistService(client playlistClient) PlaylistService {
 	return PlaylistService{
 		client: client,
 	}
