@@ -371,11 +371,12 @@ func (s *PlaylistTracks) View(width, height int) string {
 		firstNL := strings.Index(listView, "\n")
 		var inner string
 		if firstNL == -1 {
-			inner = lipgloss.JoinVertical(lipgloss.Left, listView, s.search.renderFilterTabs())
+			inner = lipgloss.JoinHorizontal(lipgloss.Left, listView, s.search.renderFilterTabs())
 		} else {
 			titleLine := listView[:firstNL]
 			rest := listView[firstNL+1:]
-			inner = lipgloss.JoinVertical(lipgloss.Left, titleLine, s.search.renderFilterTabs(), rest)
+			inner = lipgloss.JoinHorizontal(lipgloss.Left, titleLine, s.search.renderFilterTabs())
+			inner = lipgloss.JoinVertical(lipgloss.Left, inner, rest)
 		}
 		return border.Render(inner)
 	}
