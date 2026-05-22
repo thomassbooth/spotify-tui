@@ -32,7 +32,6 @@ var requiredScopes = []string{
 type Authenticator interface {
 	GetAuthURL(state string) string
 	Exchange(ctx context.Context, code string) (*oauth2.Token, error)
-	RefreshToken(ctx context.Context, token *oauth2.Token) (*oauth2.Token, error)
 	TokenSource(ctx context.Context, token *oauth2.Token) oauth2.TokenSource
 	SetCallbackURL(url string)
 }
@@ -67,10 +66,6 @@ func (a *OAuthAuthenticator) GetAuthURL(state string) string {
 
 func (a *OAuthAuthenticator) Exchange(ctx context.Context, code string) (*oauth2.Token, error) {
 	return a.config.Exchange(ctx, code)
-}
-
-func (a *OAuthAuthenticator) RefreshToken(ctx context.Context, token *oauth2.Token) (*oauth2.Token, error) {
-	return a.config.TokenSource(ctx, token).Token()
 }
 
 func (a *OAuthAuthenticator) TokenSource(ctx context.Context, token *oauth2.Token) oauth2.TokenSource {
