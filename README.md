@@ -74,9 +74,3 @@ OAuth2 flow with CSRF state validation and a local callback server. On subsequen
 - **UI**: [Bubble Tea](https://github.com/charmbracelet/bubbletea) + [Bubbles](https://github.com/charmbracelet/bubbles) + [Lip Gloss](https://github.com/charmbracelet/lipgloss)
 - **Auth**: OAuth2 with automatic token refresh
 - **API**: Custom HTTP client layer with interface-driven dependency injection
-
-## Stack
-
-- **UI**: [Bubble Tea](https://github.com/charmbracelet/bubbletea) + [Bubbles](https://github.com/charmbracelet/bubbles) + [Lip Gloss](https://github.com/charmbracelet/lipgloss)
-- **Auth**: OAuth2 PKCE flow
-- **API**: Custom api layer to interact with Spotifys public API
