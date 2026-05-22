@@ -27,20 +27,16 @@ func main() {
 		log.Fatalf("Failed to get home directory: %v", err)
 	}
 
-	// Repositories
 	tokenPath := filepath.Join(homeDir, ".spotify-tui", "token.json")
 	tokenRepo := repository.NewTokenRepository(tokenPath)
 
-	// Auth layer
 	authenticator := auth.NewAuthenticator(
 		os.Getenv("SPOTIFY_CLIENT_ID"),
 		os.Getenv("SPOTIFY_CLIENT_SECRET"),
-		"",
 	)
 	flow := auth.NewAuthFlow(authenticator, 2*time.Minute)
 	authClient := auth.NewClient(flow, tokenRepo, "localhost:8889")
 
-	// Get token source
 	ctx := context.Background()
 	ts, err := authClient.GetValidToken(ctx)
 	if err != nil {
@@ -48,14 +44,11 @@ func main() {
 	}
 	fmt.Println("✓ Successfully authenticated!")
 
-	// Spotify client
 	spotifyClient := spotify.NewClient(ts, tokenRepo)
 
-	// Services
 	playlistService := service.NewPlaylistService(spotifyClient)
 	playbackService := service.NewPlaybackService(spotifyClient)
 
-	// Run
 	p := tea.NewProgram(view.NewPage(&playlistService, &playbackService))
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Error: %v\n", err)

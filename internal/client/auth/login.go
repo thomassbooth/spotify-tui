@@ -9,13 +9,11 @@ import (
 	"golang.org/x/oauth2"
 )
 
-// Flow is the interface the client depends on
 type Flow interface {
 	Authenticate(ctx context.Context, serverAddr string) (*oauth2.Token, error)
 	TokenSource(ctx context.Context, token *oauth2.Token) oauth2.TokenSource
 }
 
-// AuthFlow is the real implementation
 type AuthFlow struct {
 	auth    Authenticator
 	timeout time.Duration
@@ -41,9 +39,7 @@ func (f *AuthFlow) Authenticate(ctx context.Context, serverAddr string) (*oauth2
 	}
 	defer server.Stop(context.Background())
 
-	f.auth.SetCallbackURL(callbackURL)
-
-	authURL := f.auth.GetAuthURL(state)
+	authURL := f.auth.GetAuthURL(state, callbackURL)
 	fmt.Println("\n" + strings.Repeat("=", 60))
 	fmt.Println("🎵 Spotify Authorization Required")
 	fmt.Println(strings.Repeat("=", 60))
@@ -61,7 +57,7 @@ func (f *AuthFlow) Authenticate(ctx context.Context, serverAddr string) (*oauth2
 
 	fmt.Println("✓ Authorization code received, exchanging for token...")
 
-	token, err := f.auth.Exchange(context.Background(), code)
+	token, err := f.auth.Exchange(context.Background(), code, callbackURL)
 	if err != nil {
 		return nil, fmt.Errorf("token exchange failed: %w", err)
 	}

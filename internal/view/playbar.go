@@ -12,14 +12,6 @@ import (
 	"github.com/thomassbooth/spotify-tui/internal/service"
 )
 
-type playbarTickMsg struct{}
-type playbarSyncMsg struct {
-	state entities.PlaybackState
-}
-type syncPollMsg struct {
-	state *entities.PlaybackState
-}
-
 type Playbar struct {
 	bus             *MessageBus
 	playbackService *service.PlaybackService
@@ -62,6 +54,15 @@ func (p *Playbar) Update(msg tea.Msg) (Component, tea.Cmd) {
 		case "p", "h", "left":
 			return p, p.previousCmd()
 		}
+
+	case schedulePollMsg:
+		return p, tea.Tick(m.delay, func(time.Time) tea.Msg {
+			state, err := p.playbackService.GetCurrentPlaybackState()
+			if err != nil || state == nil {
+				return errMsg{Err: err}
+			}
+			return *state
+		})
 
 	case playbarTickMsg:
 		p.mu.Lock()
@@ -164,16 +165,7 @@ func (p *Playbar) togglePlayCmd() tea.Cmd {
 		if err != nil {
 			return errMsg{Err: err}
 		}
-
-		time.Sleep(300 * time.Millisecond)
-		state, err := p.playbackService.GetCurrentPlaybackState()
-		if err != nil {
-			return errMsg{Err: err}
-		}
-		if state != nil {
-			return *state
-		}
-		return nil
+		return schedulePollMsg{delay: 300 * time.Millisecond}
 	}
 }
 
@@ -183,15 +175,7 @@ func (p *Playbar) nextCmd() tea.Cmd {
 		if err != nil {
 			return errMsg{Err: err}
 		}
-		time.Sleep(500 * time.Millisecond)
-		state, err := p.playbackService.GetCurrentPlaybackState()
-		if err != nil {
-			return errMsg{Err: err}
-		}
-		if state != nil {
-			return *state
-		}
-		return nil
+		return schedulePollMsg{delay: 500 * time.Millisecond}
 	}
 }
 
@@ -201,15 +185,7 @@ func (p *Playbar) previousCmd() tea.Cmd {
 		if err != nil {
 			return errMsg{Err: err}
 		}
-		time.Sleep(500 * time.Millisecond)
-		state, err := p.playbackService.GetCurrentPlaybackState()
-		if err != nil {
-			return errMsg{Err: err}
-		}
-		if state != nil {
-			return *state
-		}
-		return nil
+		return schedulePollMsg{delay: 500 * time.Millisecond}
 	}
 }
 
@@ -221,12 +197,7 @@ func (p *Playbar) OnMessage(t MsgType, msg tea.Msg) tea.Cmd {
 				if err != nil {
 					return errMsg{Err: err}
 				}
-				time.Sleep(300 * time.Millisecond)
-				state, err := p.playbackService.GetCurrentPlaybackState()
-				if err != nil {
-					return errMsg{Err: err}
-				}
-				return playbarSyncMsg{state: *state}
+				return schedulePollMsg{delay: 300 * time.Millisecond}
 			}
 		}
 	}
@@ -236,20 +207,12 @@ func (p *Playbar) OnMessage(t MsgType, msg tea.Msg) tea.Cmd {
 			p.mu.Lock()
 			currentShuffle := p.playbackState != nil && p.playbackState.ShuffleState
 			p.mu.Unlock()
-			
+
 			err := p.playbackService.ToggleShufflePlayback(!currentShuffle)
 			if err != nil {
 				return errMsg{Err: err}
 			}
-			time.Sleep(300 * time.Millisecond)
-			state, err := p.playbackService.GetCurrentPlaybackState()
-			if err != nil {
-				return errMsg{Err: err}
-			}
-			if state != nil {
-				return playbarSyncMsg{state: *state}
-			}
-			return nil
+			return schedulePollMsg{delay: 300 * time.Millisecond}
 		}
 	}
 

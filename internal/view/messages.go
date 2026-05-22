@@ -1,6 +1,8 @@
 package view
 
 import (
+	"time"
+
 	"github.com/thomassbooth/spotify-tui/internal/entities"
 )
 
@@ -31,7 +33,7 @@ const (
 )
 
 
-// Actual message structs
+// Actual message structs - returned back from onMessage for updats to handle
 
 type SearchResultsMsg struct {
 	Tracks  []entities.Track
@@ -90,4 +92,15 @@ type queueLoadedMsg struct {
 
 type errMsg struct {
 	Err error
+}
+
+type playbarTickMsg struct{}
+type playbarSyncMsg struct {
+	state entities.PlaybackState
+}
+type syncPollMsg struct {
+	state *entities.PlaybackState
+}
+type schedulePollMsg struct {
+	delay time.Duration
 }
