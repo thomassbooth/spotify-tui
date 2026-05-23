@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/thomassbooth/spotify-tui/internal/entities"
@@ -13,10 +14,12 @@ type playbackClient interface {
     GetQueue(ctx context.Context) ([]entities.Track, error)
     Put(ctx context.Context, path string, params, body interface{}) ([]byte, error)
     Post(ctx context.Context, path string, params, body interface{}) ([]byte, error)
+	GetDevices(ctx context.Context) ([]entities.Device, error)
 }
 
 type PlaybackService struct {
-    client playbackClient
+    client   playbackClient
+    deviceID string  // cached after first lookup
 }
 
 func NewPlaybackService(client playbackClient) PlaybackService {
@@ -34,11 +37,25 @@ func (s *PlaybackService) GetCurrentPlaybackState() (*entities.PlaybackState, er
 	defer cancel()
 	return s.client.GetCurrentPlayback(ctx)
 }
+
 func (s *PlaybackService) Play(trackURI string, playlistURI string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	var body map[string]interface{}
 
+	if s.deviceID == "" {
+		deviceID, err := s.ensureLocalDevice(ctx)
+		if err != nil {
+			return err
+		}
+		s.deviceID = deviceID
+	}
+
+	var params map[string]interface{}
+	if s.deviceID != "" {
+		params = map[string]interface{}{"device_id": s.deviceID}
+	}
+
+	var body map[string]interface{}
 	if playlistURI != "" {
 		body = map[string]interface{}{
 			"context_uri": playlistURI,
@@ -53,24 +70,35 @@ func (s *PlaybackService) Play(trackURI string, playlistURI string) error {
 			"position_ms": 0,
 		}
 	}
-		
-	_, err := s.client.Put(ctx, "/me/player/play", nil, body)
+
+	_, err := s.client.Put(ctx, "/me/player/play", params, body)
 	return err
 }
 
-func (s *PlaybackService) Pause(ctx context.Context) error {
-	_, err := s.client.Put(ctx, "/me/player/pause", nil, nil)
-	return err
-}
+func (s *PlaybackService) ensureLocalDevice(ctx context.Context) (string, error) {
+	state, err := s.client.GetCurrentPlayback(ctx)
+	if err == nil && state != nil && state.IsPlaying {
+		return "", nil  // already active, no device_id needed
+	}
 
-func (s *PlaybackService) Next(ctx context.Context) error {
-	_, err := s.client.Post(ctx, "/me/player/next", nil, nil)
-	return err
-}
+	devices, err := s.GetDevices(ctx)
+	if err != nil {
+		return "", err
+	}
 
-func (s *PlaybackService) Previous(ctx context.Context) error {
-	_, err := s.client.Post(ctx, "/me/player/previous", nil, nil)
-	return err
+	// prefer a computer type device (the local machine)
+	for _, d := range devices {
+		if d.Type == "Computer" {
+			return d.ID, nil
+		}
+	}
+
+	// fall back to whatever is available
+	if len(devices) > 0 {
+		return devices[0].ID, nil
+	}
+
+	return "", fmt.Errorf("no available devices found — open Spotify on this machine")
 }
 
 func (s *PlaybackService) Seek(ctx context.Context, positionMs int) error {
@@ -85,16 +113,6 @@ func (s *PlaybackService) ToggleRepeat(ctx context.Context, state string) error 
 		"state": state,
 	})
 	return err
-}
-
-func (s *PlaybackService) TogglePlay() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-	if true {
-		_, err := s.client.Put(ctx, "/me/player/pause", nil, nil)
-		return err
-	}
-	return nil
 }
 
 func (s *PlaybackService) PausePlayback() error {
@@ -180,4 +198,8 @@ func PollInterval() time.Duration {
 
 func (s *PlaybackService) GetQueue(ctx context.Context) ([]entities.Track, error) {
 	return s.client.GetQueue(ctx)
+}
+
+func (s *PlaybackService) GetDevices(ctx context.Context) ([]entities.Device, error) {
+	return s.client.GetDevices(ctx)
 }

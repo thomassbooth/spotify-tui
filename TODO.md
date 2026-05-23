@@ -2,18 +2,19 @@
 
 ## Bugs
 - [ ] Fix `Seek` and `ToggleRepeat` — params need to go in query string not request body
-- [ ] Fix `TogglePlay` — `if true` dead code, needs to check actual playback state
-- [ ] Remove duplicate service methods (`Next`/`NextTrack`, `Pause`/`PausePlayback`, `Previous`/`PreviousTrack`)
+- [X] Fix `TogglePlay` — `if true` dead code, needs to check actual playback state - removed, uneeded as we have pause and resume.
+- [X] Remove duplicate service methods (`Next`/`NextTrack`, `Pause`/`PausePlayback`, `Previous`/`PreviousTrack`)
 
 ## Features
-- [ ] Device picker — show available Spotify devices when no active device found on play, pass `device_id` as query param on the initial play call
+- [X] Device picker — show available Spotify devices when no active device found on play, pass `device_id` as query param on the initial play call - done but, it just gets the current computer and adds it to first request - maybe i can add a devices section in the future.
 - [ ] Search — wire up actual Spotify search API call, currently just a UI skeleton
 - [ ] Pagination — playlists and tracks both capped at Spotify's default 20, need to handle `next` cursor from responses
 - [ ] First run setup flow — interactive terminal UI to guide through Spotify app creation and config instead of requiring a manual `.env`
 
 ## Architecture
-- [ ] Move playlists fetch in `NewSidebar` to an async `tea.Cmd` — currently blocks render on startup
+- [X] Move playlists fetch in `NewSidebar` to an async `tea.Cmd` — currently blocks render on startup
 - [X] Replace `time.Sleep` in playbar commands with a delayed `tea.Tick` poll
+- [ ] Tidy up main.go - too much logic, it should literally just start the app not handle client calls for auth!
 
 ## Error handling
 - [ ] Surface errors to the user in the TUI — currently swallowed with a TODO comment in `page.go`

@@ -30,6 +30,7 @@ func main() {
 	tokenPath := filepath.Join(homeDir, ".spotify-tui", "token.json")
 	tokenRepo := repository.NewTokenRepository(tokenPath)
 
+	// auth login
 	authenticator := auth.NewAuthenticator(
 		os.Getenv("SPOTIFY_CLIENT_ID"),
 		os.Getenv("SPOTIFY_CLIENT_SECRET"),
@@ -44,8 +45,10 @@ func main() {
 	}
 	fmt.Println("✓ Successfully authenticated!")
 
+	// setup clients
 	spotifyClient := spotify.NewClient(ts, tokenRepo)
 
+	// setup services
 	playlistService := service.NewPlaylistService(spotifyClient)
 	playbackService := service.NewPlaybackService(spotifyClient)
 

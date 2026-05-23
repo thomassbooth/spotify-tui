@@ -100,26 +100,23 @@ type Sidebar struct {
 
 // NewSidebar creates a ready-to-use sidebar
 func NewSidebar(bus *MessageBus, playlistService *service.PlaylistService) *Sidebar {
-	const width = 22
-	playlists, _ := playlistService.GetPlaylists()
-	lists := make([]list.Item, len(playlists))
-	for i, p := range playlists {
-		lists[i] = sidebarItem{
-			name:      p.Name,
-			ownerName: p.OwnerName,
-			plType:    p.Type,
-			id:        p.ID,
-			uri: 	 p.URI,
-		}
-	}
-
 	delegate := sidebarDelegate{list.NewDefaultDelegate()}
-	l := list.New(lists, delegate, width, 0)
+	l := list.New([]list.Item{}, delegate, 22, 0)
 	l.Title = "Playlists"
 	l.SetShowHelp(false)
 	l.SetShowStatusBar(false)
 
 	return &Sidebar{list: l, focused: false, bus: bus, playlistService: playlistService}
+}
+
+func (s *Sidebar) Init() tea.Cmd {
+	return func() tea.Msg {
+		playlists, err := s.playlistService.GetPlaylists()
+		if err != nil {
+			return errMsg{Err: err}
+		}
+		return playlistsLoadedMsg{playlists: playlists}
+	}
 }
 
 func (s *Sidebar) Deselect() {
@@ -128,6 +125,22 @@ func (s *Sidebar) Deselect() {
 
 func (s *Sidebar) Update(msg tea.Msg) (Component, tea.Cmd) {
 	var cmd tea.Cmd
+
+	switch m := msg.(type) {
+	case playlistsLoadedMsg:
+		items := make([]list.Item, len(m.playlists))
+		for i, p := range m.playlists {
+			items[i] = sidebarItem{
+				name:      p.Name,
+				ownerName: p.OwnerName,
+				plType:    p.Type,
+				id:        p.ID,
+				uri:       p.URI,
+			}
+		}
+		s.list.SetItems(items)
+		return s, nil
+	}
 
 	if !s.focused {
 		s.list.Select(-1)
@@ -145,7 +158,6 @@ func (s *Sidebar) Update(msg tea.Msg) (Component, tea.Cmd) {
 		case key.Matches(m, key.NewBinding(key.WithKeys("enter"))):
 			if sel := s.list.SelectedItem(); sel != nil {
 				if item, ok := sel.(sidebarItem); ok && item.id != "" {
-					// Publish using your MessageBus API: (type, payload)
 					cmd := s.bus.Publish(MsgPlaylistSelected, PlaylistSelectedMsg{
 						ID:   item.id,
 						Name: item.name,
@@ -158,7 +170,6 @@ func (s *Sidebar) Update(msg tea.Msg) (Component, tea.Cmd) {
 		}
 	}
 
-	// Let the list handle navigation, selection, etc.
 	s.list, cmd = s.list.Update(msg)
 	return s, cmd
 }

@@ -44,7 +44,10 @@ func NewPage(playlistService *service.PlaylistService, playbackService *service.
 }
 
 func (p *Page) Init() tea.Cmd {
-	return p.playbar.(*Playbar).Init()
+	return tea.Batch(
+		p.playbar.(*Playbar).Init(),
+		p.sidebar.(*Sidebar).Init(),
+	)
 }
 
 func (p *Page) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -105,6 +108,10 @@ func (p *Page) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, cmd)
 		}
 		p.navigation, cmd = p.navigation.Update(msg)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+		p.sidebar, cmd = p.sidebar.Update(msg)  // add this
 		if cmd != nil {
 			cmds = append(cmds, cmd)
 		}

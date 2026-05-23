@@ -104,3 +104,6 @@ type syncPollMsg struct {
 type schedulePollMsg struct {
 	delay time.Duration
 }
+type playlistsLoadedMsg struct {
+	playlists []entities.Playlist
+}
