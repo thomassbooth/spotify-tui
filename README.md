@@ -31,7 +31,7 @@ SPOTIFY_CLIENT_SECRET=your_client_secret
 3. Run the application:
 
 ```bash
-go run ./cmd/spotify-tui
+make run
 ```
 
 On first launch, the browser will open to authenticate with Spotify. After authorization, the token is cached at `~/.spotify-tui/token.json`.
