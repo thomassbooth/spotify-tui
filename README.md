@@ -40,14 +40,15 @@ On first launch, the browser will open to authenticate with Spotify. After autho
 
 | Key | Action |
 |---|---|
-| `Tab` / `Shift+Tab` | Cycle focus between panels |
+| `Tab` | Cycle focus between panels |
 | `↑` / `↓` or `j` / `k` | Navigate list items |
 | `Enter` | Select item (playlist) |
 | `←` / `→` or `h` / `l` | Navigate tabs (when focused) |
-| `1` / `2` / `3` | Jump to tab (when focused) |
 | `q` | Quit |
 | `X` | Remove from playlist (when focused) |
 | `Q` | Toggle Queued Songs |
+| `S` | Toggle Shuffle |
+| `L` | Toggle Looping |
 
 ## Architecture
 

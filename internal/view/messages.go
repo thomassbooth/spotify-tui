@@ -28,6 +28,7 @@ const (
 	MsgQueueUpdate      MsgType = "queue.update"
 	MsgToggleQueue      MsgType = "toggle.queue"
 	MsgToggleShuffle    MsgType = "toggle.shuffle"
+	MsgToggleRepeat	   	MsgType = "toggle.repeat"
 	MsgSearch			MsgType = "search"
 	MsgFocusSearch      MsgType = "focus.search"
 	MsgActionText       MsgType = "action.text"
@@ -50,6 +51,7 @@ type SearchResultsMsg struct {
 type TabChangedMsg struct {
 	Tab int // 0=Search, 1=Home, 2=Browse
 }
+
 
 type FocusSearchMsg struct{}
 type PlaylistSelectedMsg struct {
@@ -82,6 +84,8 @@ type ErrorMsg struct {
 type QueueUpdateMsg struct {
 	Tracks []entities.Track
 }
+
+type ToggleRepeatMsg struct{}
 
 type ToggleQueueMsg struct{}
 

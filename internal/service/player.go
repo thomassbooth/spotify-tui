@@ -155,35 +155,37 @@ func (s *PlaybackService) ToggleShufflePlayback(state bool) error {
 func (s *PlaybackService) ToggleRepeatPlayback(state string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	_, err := s.client.Put(ctx, "/me/player/repeat", nil, map[string]interface{}{
+
+	_, err := s.client.Put(ctx, "/me/player/repeat", map[string]interface{}{
 		"state": state,
-	})
+	}, nil)
 	return err
 }
 
 func (s *PlaybackService) SetVolume(percent int) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	_, err := s.client.Put(ctx, "/me/player/volume", nil, map[string]interface{}{
+	_, err := s.client.Put(ctx, "/me/player/volume",map[string]interface{}{
 		"volume_percent": percent,
-	})
+	}, nil)
 	return err
 }
 
-func (s *PlaybackService) VolumeUp(current int, step int) error {
+func (s *PlaybackService) VolumeUp(current int, step int) (int, error) {
 	vol := current + step
 	if vol > 100 {
 		vol = 100
 	}
-	return s.SetVolume(vol)
+	
+	return vol, s.SetVolume(vol)
 }
 
-func (s *PlaybackService) VolumeDown(current int, step int) error {
+func (s *PlaybackService) VolumeDown(current int, step int) (int, error) {
 	vol := current - step
 	if vol < 0 {
 		vol = 0
 	}
-	return s.SetVolume(vol)
+	return vol, s.SetVolume(vol)
 }
 
 const defaultPollInterval = 3 * time.Second

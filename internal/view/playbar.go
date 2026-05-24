@@ -32,6 +32,7 @@ func NewPlaybar(bus *MessageBus, playbackService *service.PlaybackService) *Play
 	bus.Subscribe(MsgPlaybackUpdate, p)
 	bus.Subscribe(MsgPlayTrack, p)
 	bus.Subscribe(MsgToggleShuffle, p)
+	bus.Subscribe(MsgToggleRepeat, p)
 
 	return p
 }
@@ -47,12 +48,26 @@ func (p *Playbar) Update(msg tea.Msg) (Component, tea.Cmd) {
 			return p, nil
 		}
 		switch m.String() {
-		case " ", "enter":
-			return p, p.togglePlayCmd()
-		case "n", "l", "right":
-			return p, p.nextCmd()
-		case "p", "h", "left":
-			return p, p.previousCmd()
+			case " ", "enter":
+				return p, p.togglePlayCmd()
+			case "n", "l", "right":
+				return p, p.nextCmd()
+			case "p", "h", "left":
+				return p, p.previousCmd()
+			case "up":
+				vol, err := p.playbackService.VolumeUp(p.playbackState.Device.VolumePercent, 10)
+				if err != nil {
+					return p, nil
+				}
+				p.playbackState.Device.VolumePercent = vol
+				return p, nil
+			case "down":
+				vol, err := p.playbackService.VolumeDown(p.playbackState.Device.VolumePercent, 10)
+				if err != nil {
+					return p, nil
+				}
+				p.playbackState.Device.VolumePercent = vol
+				return p, nil
 		}
 
 	case schedulePollMsg:
@@ -216,7 +231,31 @@ func (p *Playbar) OnMessage(t MsgType, msg tea.Msg) tea.Cmd {
 		}
 	}
 
+	if t == MsgToggleRepeat {
+		return func() tea.Msg {
+			
+			err := p.playbackService.ToggleRepeatPlayback(p.getNextRepeatState())
+			if err != nil {
+				return errMsg{Err: err}
+			}
+			return schedulePollMsg{delay: 300 * time.Millisecond}
+		}
+	}
+
 	return nil
+}
+
+func (p *Playbar) getNextRepeatState() string {
+	switch p.playbackState.RepeatState {
+	case "off":
+		return "context"
+	case "context":
+		return "track"
+	case "track":
+		return "off"
+	default:
+		return "context"
+	}
 }
 
 func (p *Playbar) Blur() {
@@ -260,6 +299,7 @@ func (p *Playbar) View(width, height int) string {
 	bar := renderProgressBar(elapsed, track.DurationMs, progressWidth)
 	times := fmt.Sprintf("%s / %s", formatDuration(elapsed), formatDuration(track.DurationMs))
 
+	//shuffle
 	shuffleColor := lipgloss.Color("#535353")
 	shuffleText := "unshuffled"
 	shuffleBold := false
@@ -270,9 +310,21 @@ func (p *Playbar) View(width, height int) string {
 	}
 	shuffle := lipgloss.NewStyle().Bold(shuffleBold).PaddingLeft(1).Foreground(shuffleColor).Render(shuffleText)
 
-	progress := fmt.Sprintf("%s %s %s", bar, times, shuffle)
+	// repeat
+	repeatColor := lipgloss.Color("#535353")
+	if state.RepeatState != "off" {
+		repeatColor = lipgloss.Color("#1db954")
+	}
+	repeat := lipgloss.NewStyle().PaddingLeft(1).Foreground(repeatColor).Render("repeat: " + state.RepeatState)
 
-	content := lipgloss.JoinVertical(lipgloss.Left, song, artist, progress)
+	//sound
+	volumeColor := lipgloss.Color("#535353")
+	volumeText := fmt.Sprintf("vol: %d%%", state.Device.VolumePercent)
+
+	volume := lipgloss.NewStyle().PaddingLeft(1).Foreground(volumeColor).Render(volumeText)
+
+	lowerBar := fmt.Sprintf("%s %s %s %s %s", bar, times, shuffle, repeat, volume)
+	content := lipgloss.JoinVertical(lipgloss.Left, song, artist, lowerBar)
 	paddedContent := lipgloss.NewStyle().PaddingLeft(2).Render(content)
 
 	b := borderStyle.Copy().Width(width).Height(height)

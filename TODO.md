@@ -1,7 +1,8 @@
 # TODO
 
 ## Bugs
-- [ ] Fix `Seek` and `ToggleRepeat` — params need to go in query string not request body - is this needed? idk
+- [X] Fix `ToggleRepeat` — params need to go in query string not request body - is this needed? idk
+- [X] Fix `VolumeToggle` - make it work!
 - [X] Fix `TogglePlay` — `if true` dead code, needs to check actual playback state - removed, uneeded as we have pause and resume.
 - [X] Remove duplicate service methods (`Next`/`NextTrack`, `Pause`/`PausePlayback`, `Previous`/`PreviousTrack`)
 
