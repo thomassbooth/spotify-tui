@@ -1,6 +1,7 @@
 ## Spotify-Tui
 
-<img width="954" height="682" alt="image" src="https://github.com/user-attachments/assets/f1a9bc92-7ad8-42a4-86da-6cdc872c4186" />
+<img width="886" height="606" alt="image" src="https://github.com/user-attachments/assets/add5e510-72eb-4463-b854-a2b9879f24f1" />
+
 
 
 A terminal-based Spotify client built in Go with the [Bubble Tea](https://github.com/charmbracelet/bubbletea) framework.
