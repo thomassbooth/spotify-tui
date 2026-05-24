@@ -1,7 +1,7 @@
 # TODO
 
 ## Bugs
-- [ ] Fix `Seek` and `ToggleRepeat` — params need to go in query string not request body
+- [ ] Fix `Seek` and `ToggleRepeat` — params need to go in query string not request body - is this needed? idk
 - [X] Fix `TogglePlay` — `if true` dead code, needs to check actual playback state - removed, uneeded as we have pause and resume.
 - [X] Remove duplicate service methods (`Next`/`NextTrack`, `Pause`/`PausePlayback`, `Previous`/`PreviousTrack`)
 
@@ -10,6 +10,8 @@
 - [ ] Search — wire up actual Spotify search API call, currently just a UI skeleton
 - [ ] Pagination — playlists and tracks both capped at Spotify's default 20, need to handle `next` cursor from responses
 - [ ] First run setup flow — interactive terminal UI to guide through Spotify app creation and config instead of requiring a manual `.env`
+- [x] Remove from playlist — `x` or `backspace` on a track while viewing a playlist, calls `DELETE /playlists/{id}/tracks`
+- [ ] Add to playlist — `a` on a track shows a playlist picker, calls `POST /playlists/{id}/tracks`
 
 ## Architecture
 - [X] Move playlists fetch in `NewSidebar` to an async `tea.Cmd` — currently blocks render on startup

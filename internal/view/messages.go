@@ -30,10 +30,15 @@ const (
 	MsgToggleShuffle    MsgType = "toggle.shuffle"
 	MsgSearch			MsgType = "search"
 	MsgFocusSearch      MsgType = "focus.search"
+	MsgActionText       MsgType = "action.text"
 )
 
 
 // Actual message structs - returned back from onMessage for updats to handle
+
+type ActionTextMsg struct {
+	Text string
+}
 
 type SearchResultsMsg struct {
 	Tracks  []entities.Track

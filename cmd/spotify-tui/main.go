@@ -26,7 +26,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to get home directory: %v", err)
 	}
-
+	
 	tokenPath := filepath.Join(homeDir, ".spotify-tui", "token.json")
 	tokenRepo := repository.NewTokenRepository(tokenPath)
 

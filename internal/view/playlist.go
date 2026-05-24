@@ -20,7 +20,7 @@ type playlistItem struct {
 	name       string
 	artists    []string
 	id         string
-	resultType string // "track", "album", "playlist" — populated during search
+	resultType string
 }
 
 func (i playlistItem) Title() string       { return i.name }
@@ -77,8 +77,8 @@ var filterLabels = []string{"All", "Playlists", "Albums", "Songs"}
 
 type search struct {
 	active   bool
-	filter   searchFilter // the applied filter (what the list currently shows)
-	cursor   searchFilter // the highlighted filter (moves with ←/→)
+	filter   searchFilter
+	cursor   searchFilter
 	allItems []list.Item
 }
 
@@ -170,7 +170,6 @@ func NewPlaylistTracks(bus *MessageBus, playlistService *service.PlaylistService
 }
 
 func (s *PlaylistTracks) OnMessage(t MsgType, msg tea.Msg) tea.Cmd {
-
 	if t == MsgPlaylistSelected {
 		playlistMsg, ok := msg.(PlaylistSelectedMsg)
 		if !ok {
@@ -312,14 +311,35 @@ func (s *PlaylistTracks) Update(msg tea.Msg) (Component, tea.Cmd) {
 				return s, nil
 			}
 
+		case key.Matches(msg, key.NewBinding(key.WithKeys("X"))):
+			// only available when viewing a playlist, not queue or search
+			if !s.showingQueue && !s.search.active && s.lastPlaylist.ID != "" {
+				if sel := s.tracks.SelectedItem(); sel != nil {
+					if item, ok := sel.(playlistItem); ok {
+						playlistID := s.lastPlaylist.ID
+						return s, func() tea.Msg {
+							err := s.playlistService.RemoveFromPlaylist(playlistID, item.id)
+							if err != nil {
+								return errMsg{Err: err}
+							}
+							s.bus.Publish(MsgActionText, ActionTextMsg{Text: fmt.Sprintf("%s removed from %s", item.name, s.lastPlaylist.Name)})
+							// reload the playlist to reflect the removal
+							tracks, err := s.playlistService.GetPlaylistTracks(playlistID)
+							if err != nil {
+								return errMsg{Err: err}
+							}
+							return tracksLoadedMsg{tracks: tracks}
+						}
+					}
+				}
+			}
+
 		case key.Matches(msg, key.NewBinding(key.WithKeys("enter"))):
-			// If cursor is on a different filter, apply it
 			if s.search.active && s.search.cursor != s.search.filter {
 				s.search.filter = s.search.cursor
 				s.tracks.SetItems(s.search.filterItems())
 				return s, nil
 			}
-			// Otherwise play the selected track
 			if len(s.tracks.Items()) > 0 {
 				selectedTrack := s.tracks.SelectedItem()
 				if selectedTrack != nil {

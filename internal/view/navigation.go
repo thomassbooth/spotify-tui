@@ -1,6 +1,8 @@
 package view
 
 import (
+	"fmt"
+
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -12,6 +14,7 @@ type Navigation struct {
 	searching   bool
 	searchInput textinput.Model
 	bus         *MessageBus
+	alertText 	string
 }
 
 func NewNavigation(bus *MessageBus) *Navigation {
@@ -24,6 +27,7 @@ func NewNavigation(bus *MessageBus) *Navigation {
 		bus:         bus,
 	}
 	bus.Subscribe(MsgFocusSearch, self)
+	bus.Subscribe(MsgActionText, self)
 	return self
 }
 
@@ -32,6 +36,13 @@ func (n *Navigation) OnMessage(t MsgType, msg tea.Msg) tea.Cmd {
 	if t == MsgFocusSearch {
 		return func() tea.Msg {
 			return FocusSearchMsg{}
+		}
+	}
+
+	if t == MsgActionText {
+		if m, ok := msg.(ActionTextMsg); ok {
+			n.alertText = m.Text
+			return nil
 		}
 	}
 
@@ -46,6 +57,11 @@ func (n *Navigation) Update(msg tea.Msg) (Component, tea.Cmd) {
         n.searching = true
         n.searchInput.Focus()
         return n, textinput.Blink
+		
+	case ActionTextMsg:
+		fmt.Println("message recieved")
+		n.alertText = msg.Text
+		return n, nil
 
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -73,6 +89,7 @@ func (n *Navigation) Update(msg tea.Msg) (Component, tea.Cmd) {
 			return n, textinput.Blink
 		}
 	}
+	
 
 	if n.searching {
 		n.searchInput, cmd = n.searchInput.Update(msg)
@@ -108,6 +125,8 @@ func (n *Navigation) View(width, height int) string {
 		Padding(0, 1).
 		Width(halfWidth - 4)
 
+	actionTextStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#ff4d4d")).Padding(0, 2)
+
 	if n.searching {
 		inputStyle = inputStyle.BorderForeground(lipgloss.Color("#1db954"))
 	} else {
@@ -115,6 +134,8 @@ func (n *Navigation) View(width, height int) string {
 	}
 
 	searchInput := inputStyle.Render(n.searchInput.View())
+	actionText := actionTextStyle.Render(n.alertText)
+	searchInputAndActionText := lipgloss.JoinVertical(lipgloss.Left, searchInput, actionText)
 	inputHeight := lipgloss.Height(searchInput)
 	topPadding := (height - inputHeight) / 2
 
@@ -122,7 +143,7 @@ func (n *Navigation) View(width, height int) string {
 		PaddingLeft(1).
 		PaddingTop(topPadding).
 		Width(halfWidth).
-		Render(searchInput)
+		Render(searchInputAndActionText)
 
 	content := lipgloss.JoinHorizontal(lipgloss.Top, left, logo)
 

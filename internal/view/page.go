@@ -111,7 +111,7 @@ func (p *Page) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if cmd != nil {
 			cmds = append(cmds, cmd)
 		}
-		p.sidebar, cmd = p.sidebar.Update(msg)  // add this
+		p.sidebar, cmd = p.sidebar.Update(msg)
 		if cmd != nil {
 			cmds = append(cmds, cmd)
 		}

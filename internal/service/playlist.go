@@ -11,6 +11,7 @@ import (
 type playlistClient interface {
     GetPlaylists(ctx context.Context) (*response.GetPlaylistsResponse, error)
     GetPlaylistItems(ctx context.Context, id string) (*response.GetPlaylistItemsResponse, error)
+    DeletePlaylistItem(ctx context.Context, playlistID string, trackURI string) error
 }
 
 type PlaylistService struct {
@@ -95,4 +96,11 @@ func (s *PlaylistService) GetPlaylistTracks(id string) ([]entities.Track, error)
 	}
 
 	return out, nil
+}
+
+func (s *PlaylistService) RemoveFromPlaylist(playlistID string, trackID string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	trackURI := "spotify:track:" + trackID
+	return s.client.DeletePlaylistItem(ctx, playlistID, trackURI)
 }

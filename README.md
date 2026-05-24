@@ -46,6 +46,8 @@ On first launch, the browser will open to authenticate with Spotify. After autho
 | `←` / `→` or `h` / `l` | Navigate tabs (when focused) |
 | `1` / `2` / `3` | Jump to tab (when focused) |
 | `q` | Quit |
+| `X` | Remove from playlist (when focused) |
+| `Q` | Toggle Queued Songs |
 
 ## Architecture
 

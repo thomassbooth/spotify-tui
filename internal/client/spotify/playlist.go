@@ -40,3 +40,16 @@ func (client *Client) GetPlaylistItems(ctx context.Context, playlistID string) (
 
 	return &resp, nil
 }
+
+func (client *Client) DeletePlaylistItem(ctx context.Context, playlistID string, trackURI string) error {
+	endpoint := fmt.Sprintf("/playlists/%s/items", playlistID)
+	_, err := client.Delete(ctx, endpoint, nil, map[string]interface{}{
+		"items": []map[string]string{
+			{"uri": trackURI},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
