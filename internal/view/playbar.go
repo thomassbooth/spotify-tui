@@ -358,7 +358,7 @@ func formatDuration(ms int) string {
 }
 
 func startSyncPoll(svc *service.PlaybackService) tea.Cmd {
-	return tea.Tick(5*time.Second, func(time.Time) tea.Msg {
+	return tea.Tick(3*time.Second, func(time.Time) tea.Msg {
 		state, err := svc.GetCurrentPlaybackState()
 		if err != nil {
 			return syncPollMsg{state: nil}
