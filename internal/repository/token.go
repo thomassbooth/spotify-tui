@@ -10,6 +10,15 @@ import (
 	"golang.org/x/oauth2"
 )
 
+// TokenStore is the interface the client depends on
+type TokenRepo interface {
+	Save(token *oauth2.Token) error
+	Load() (*oauth2.Token, error)
+	Delete() error
+	Exists() bool
+	GetTokenInfo() (bool, time.Time, bool, time.Duration)
+}
+
 type TokenRepository struct {
 	tokenPath string
 }

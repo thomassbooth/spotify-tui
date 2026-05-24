@@ -317,13 +317,11 @@ func (p *Playbar) View(width, height int) string {
 	}
 	repeat := lipgloss.NewStyle().PaddingLeft(1).Foreground(repeatColor).Render("repeat: " + state.RepeatState)
 
-	//sound
-	volumeColor := lipgloss.Color("#535353")
 	volumeText := fmt.Sprintf("vol: %d%%", state.Device.VolumePercent)
-
+	volumeColor := getSoundColor(state.Device.VolumePercent)
 	volume := lipgloss.NewStyle().PaddingLeft(1).Foreground(volumeColor).Render(volumeText)
 
-	lowerBar := fmt.Sprintf("%s %s %s %s %s", bar, times, shuffle, repeat, volume)
+	lowerBar := fmt.Sprintf("%s  %s  %s  %s  %s", bar, times, shuffle, repeat, volume)
 	content := lipgloss.JoinVertical(lipgloss.Left, song, artist, lowerBar)
 	paddedContent := lipgloss.NewStyle().PaddingLeft(2).Render(content)
 
@@ -333,6 +331,21 @@ func (p *Playbar) View(width, height int) string {
 	}
 
 	return b.Render(paddedContent)
+}
+
+func getSoundColor(volume int) lipgloss.Color {
+	switch {
+	case volume == 0:
+		return lipgloss.Color("#808080")
+	case volume == 100:
+		return lipgloss.Color("#c10000")
+	case volume < 40:
+		return lipgloss.Color("#6BA3FF")
+	case volume < 70:
+		return lipgloss.Color("#f8c948")
+	default:
+		return lipgloss.Color("#f46a1b")
+	}
 }
 
 func renderProgressBar(currentMs int, totalMs int, width int) string {

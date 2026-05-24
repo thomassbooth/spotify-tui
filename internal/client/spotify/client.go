@@ -8,50 +8,20 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"sync"
 
 	"github.com/google/go-querystring/query"
-	"golang.org/x/oauth2"
-
-	"github.com/thomassbooth/spotify-tui/internal/repository"
 )
 
 const baseURL = "https://api.spotify.com/v1"
 
-// TokenStore is the interface the client depends on for persisting refreshed tokens
-type TokenStore interface {
-	Save(token *oauth2.Token) error
-}
-
-type savingTokenSource struct {
-	base oauth2.TokenSource
-	repo TokenStore
-	mu   sync.Mutex
-	last *oauth2.Token
-}
-
-func (s *savingTokenSource) Token() (*oauth2.Token, error) {
-	t, err := s.base.Token()
-	if err != nil {
-		return nil, err
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.last == nil || t.AccessToken != s.last.AccessToken {
-		s.last = t
-		_ = s.repo.Save(t)
-	}
-	return t, nil
-}
 
 type Client struct {
 	httpClient *http.Client
 }
 
-func NewClient(ts oauth2.TokenSource, store TokenStore) *Client {
-	saving := &savingTokenSource{base: ts, repo: store}
+func NewClient(httpClient *http.Client) *Client {
 	return &Client{
-		httpClient: oauth2.NewClient(context.Background(), saving),
+		httpClient: httpClient,
 	}
 }
 
@@ -156,6 +126,3 @@ func (c *Client) createRequest(ctx context.Context, url, method string, body io.
 	req.Header.Set("Content-Type", "application/json")
 	return req, nil
 }
-
-// Ensure TokenRepository satisfies TokenStore at compile time
-var _ TokenStore = (*repository.TokenRepository)(nil)

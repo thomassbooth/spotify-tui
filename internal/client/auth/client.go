@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"time"
 
 	"golang.org/x/oauth2"
@@ -10,22 +11,13 @@ import (
 	"github.com/thomassbooth/spotify-tui/internal/repository"
 )
 
-// TokenStore is the interface the client depends on
-type TokenStore interface {
-	Save(token *oauth2.Token) error
-	Load() (*oauth2.Token, error)
-	Delete() error
-	Exists() bool
-	GetTokenInfo() (bool, time.Time, bool, time.Duration)
-}
-
 type Client struct {
-	flow       Flow
-	serverAddr string
-	tokenStore TokenStore
+    flow       Flow
+    serverAddr string
+    tokenStore repository.TokenRepo
 }
 
-func NewClient(flow Flow, tokenStore TokenStore, serverAddr string) *Client {
+func NewAuthClient(flow Flow, tokenStore repository.TokenRepo, serverAddr string) *Client {
 	return &Client{
 		flow:       flow,
 		serverAddr: serverAddr,
@@ -33,23 +25,21 @@ func NewClient(flow Flow, tokenStore TokenStore, serverAddr string) *Client {
 	}
 }
 
-func (c *Client) GetValidToken(ctx context.Context) (oauth2.TokenSource, error) {
-	token, err := c.tokenStore.Load()
-	if err == nil {
-		return c.flow.TokenSource(ctx, token), nil
-	}
+func (c *Client) AuthenticatedHTTPClient(ctx context.Context) (*http.Client, error) {
+    token, err := c.tokenStore.Load()
+    if err != nil {
+        fmt.Println("Authentication required...")
 
-	fmt.Println("Authentication required...")
-	token, err = c.flow.Authenticate(ctx, c.serverAddr)
-	if err != nil {
-		return nil, fmt.Errorf("authentication failed: %w", err)
-	}
+        token, err = c.flow.Authenticate(ctx, c.serverAddr)
+        if err != nil {
+            return nil, fmt.Errorf("authentication failed: %w", err)
+        }
 
-	if err := c.tokenStore.Save(token); err != nil {
-		fmt.Printf("Warning: failed to save token: %v\n", err)
-	}
+        _ = c.tokenStore.Save(token)
+    }
 
-	return c.flow.TokenSource(ctx, token), nil
+    ts := c.flow.TokenSource(ctx, token)
+    return oauth2.NewClient(ctx, ts), nil
 }
 
 func (c *Client) Logout() error {
@@ -76,6 +66,3 @@ type TokenInfo struct {
 	HasRefresh bool
 	ExpiresIn  time.Duration
 }
-
-// Ensure TokenRepository satisfies TokenStore at compile time
-var _ TokenStore = (*repository.TokenRepository)(nil)

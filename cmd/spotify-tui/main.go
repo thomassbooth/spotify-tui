@@ -18,6 +18,7 @@ import (
 )
 
 func main() {
+	ctx := context.Background()
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found")
 	}
@@ -36,17 +37,15 @@ func main() {
 		os.Getenv("SPOTIFY_CLIENT_SECRET"),
 	)
 	flow := auth.NewAuthFlow(authenticator, 2*time.Minute)
-	authClient := auth.NewClient(flow, tokenRepo, "localhost:8889")
-
-	ctx := context.Background()
-	ts, err := authClient.GetValidToken(ctx)
+	authClient := auth.NewAuthClient(flow, tokenRepo, "localhost:8889")
+	httpClient, err := authClient.AuthenticatedHTTPClient(ctx)
 	if err != nil {
 		log.Fatalf("Authentication failed: %v", err)
 	}
 	fmt.Println("✓ Successfully authenticated!")
 
 	// setup clients
-	spotifyClient := spotify.NewClient(ts, tokenRepo)
+	spotifyClient := spotify.NewClient(httpClient)
 
 	// setup services
 	playlistService := service.NewPlaylistService(spotifyClient)
