@@ -54,3 +54,10 @@ func (c *Client) GetDevices(ctx context.Context) ([]entities.Device, error) {
 
 	return resp.Devices, nil
 }
+
+func (c *Client) PutVolume(ctx context.Context, percent int) error {
+	_, err := c.Put(ctx, "/me/player/volume",map[string]interface{}{
+		"volume_percent": percent,
+	}, nil)
+	return err
+}

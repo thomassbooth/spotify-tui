@@ -15,6 +15,7 @@ type playbackClient interface {
     Put(ctx context.Context, path string, params, body interface{}) ([]byte, error)
     Post(ctx context.Context, path string, params, body interface{}) ([]byte, error)
 	GetDevices(ctx context.Context) ([]entities.Device, error)
+	PutVolume(ctx context.Context, percent int) error
 }
 
 type PlaybackService struct {
@@ -172,20 +173,24 @@ func (s *PlaybackService) SetVolume(percent int) error {
 }
 
 func (s *PlaybackService) VolumeUp(current int, step int) (int, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
 	vol := current + step
 	if vol > 100 {
 		vol = 100
 	}
 	
-	return vol, s.SetVolume(vol)
+	return vol, s.client.PutVolume(ctx, vol)
 }
 
 func (s *PlaybackService) VolumeDown(current int, step int) (int, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
 	vol := current - step
 	if vol < 0 {
 		vol = 0
 	}
-	return vol, s.SetVolume(vol)
+	return vol, s.client.PutVolume(ctx, vol)
 }
 
 const defaultPollInterval = 3 * time.Second
