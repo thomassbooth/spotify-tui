@@ -1,6 +1,6 @@
 ## Spotify-Tui
 
-<img width="886" height="606" alt="image" src="https://github.com/user-attachments/assets/add5e510-72eb-4463-b854-a2b9879f24f1" />
+<img width="1024" height="670" alt="image" src="https://github.com/user-attachments/assets/88363e31-b2b1-447a-8f24-7d78c68f6730" />
 
 
 
