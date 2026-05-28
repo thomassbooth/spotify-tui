@@ -9,37 +9,71 @@ import (
 	"golang.org/x/oauth2"
 )
 
+type persistingTokenSource struct {
+	source oauth2.TokenSource
+	store  *repository.TokenRepository
+	last   string
+}
+
+func (p *persistingTokenSource) Token() (*oauth2.Token, error) {
+	t, err := p.source.Token()
+	if err != nil {
+		return nil, err
+	}
+	if t.AccessToken != p.last {
+		p.last = t.AccessToken
+		_ = p.store.Save(t)
+	}
+	return t, nil
+}
+
 type Client struct {
-    flow       Flow
-    serverAddr string
-    tokenStore *repository.TokenRepository
+	flow        Flow
+	serverAddr  string
+	tokenStore  *repository.TokenRepository
 	configStore *repository.ConfigRepository
 }
 
 func NewAuthClient(flow Flow, tokenStore *repository.TokenRepository, configStore *repository.ConfigRepository, serverAddr string) *Client {
 	return &Client{
-		flow:       flow,
-		serverAddr: serverAddr,
-		tokenStore: tokenStore,
+		flow:        flow,
+		serverAddr:  serverAddr,
+		tokenStore:  tokenStore,
 		configStore: configStore,
 	}
 }
 
 func (c *Client) AuthenticatedHTTPClient(ctx context.Context) (*http.Client, error) {
-    token, err := c.tokenStore.Load()
-    if err != nil {
-        fmt.Println("Authentication required...")
+	token, err := c.tokenStore.Load()
+	if err != nil {
+		token, err = c.flow.Authenticate(ctx, c.serverAddr)
+		if err != nil {
+			return nil, fmt.Errorf("authentication failed: %w", err)
+		}
+		_ = c.tokenStore.Save(token)
+	}
 
-        token, err = c.flow.Authenticate(ctx, c.serverAddr)
-        if err != nil {
-            return nil, fmt.Errorf("authentication failed: %w", err)
-        }
+	ts := c.flow.TokenSource(ctx, token)
 
-        _ = c.tokenStore.Save(token)
-    }
+	freshToken, err := ts.Token()
+	if err != nil {
+		_ = c.tokenStore.Delete()
+		token, err = c.flow.Authenticate(ctx, c.serverAddr)
+		if err != nil {
+			return nil, fmt.Errorf("re-authentication failed: %w", err)
+		}
+		_ = c.tokenStore.Save(token)
+		ts = c.flow.TokenSource(ctx, token)
+		freshToken = token
+	}
 
-    ts := c.flow.TokenSource(ctx, token)
-    return oauth2.NewClient(ctx, ts), nil
+	pts := &persistingTokenSource{
+		source: ts,
+		store:  c.tokenStore,
+		last:   freshToken.AccessToken,
+	}
+
+	return oauth2.NewClient(ctx, pts), nil
 }
 
 func (c *Client) Logout() error {

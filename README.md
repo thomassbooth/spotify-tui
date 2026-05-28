@@ -22,14 +22,7 @@ A terminal-based Spotify client built in Go with the [Bubble Tea](https://github
 
 1. Clone the repository
 
-2. Create a `.env` file at the project root:
-
-```
-SPOTIFY_CLIENT_ID=your_client_id
-SPOTIFY_CLIENT_SECRET=your_client_secret
-```
-
-3. Run the application:
+2. Run the application:
 
 ```bash
 make run
