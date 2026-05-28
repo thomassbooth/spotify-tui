@@ -9,24 +9,6 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type persistingTokenSource struct {
-	source oauth2.TokenSource
-	store  *repository.TokenRepository
-	last   string
-}
-
-func (p *persistingTokenSource) Token() (*oauth2.Token, error) {
-	t, err := p.source.Token()
-	if err != nil {
-		return nil, err
-	}
-	if t.AccessToken != p.last {
-		p.last = t.AccessToken
-		_ = p.store.Save(t)
-	}
-	return t, nil
-}
-
 type Client struct {
 	flow        Flow
 	serverAddr  string
@@ -84,4 +66,22 @@ func (c *Client) Logout() error {
 
 func (c *Client) HasCachedToken() bool {
 	return c.tokenStore.Exists()
+}
+
+type persistingTokenSource struct {
+	source oauth2.TokenSource
+	store  *repository.TokenRepository
+	last   string
+}
+
+func (p *persistingTokenSource) Token() (*oauth2.Token, error) {
+	t, err := p.source.Token()
+	if err != nil {
+		return nil, err
+	}
+	if t.AccessToken != p.last {
+		p.last = t.AccessToken
+		_ = p.store.Save(t)
+	}
+	return t, nil
 }
