@@ -4,24 +4,24 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"time"
-
-	"golang.org/x/oauth2"
 
 	"github.com/thomassbooth/spotify-tui/internal/repository"
+	"golang.org/x/oauth2"
 )
 
 type Client struct {
     flow       Flow
     serverAddr string
-    tokenStore repository.TokenRepo
+    tokenStore *repository.TokenRepository
+	configStore *repository.ConfigRepository
 }
 
-func NewAuthClient(flow Flow, tokenStore repository.TokenRepo, serverAddr string) *Client {
+func NewAuthClient(flow Flow, tokenStore *repository.TokenRepository, configStore *repository.ConfigRepository, serverAddr string) *Client {
 	return &Client{
 		flow:       flow,
 		serverAddr: serverAddr,
 		tokenStore: tokenStore,
+		configStore: configStore,
 	}
 }
 
@@ -43,26 +43,11 @@ func (c *Client) AuthenticatedHTTPClient(ctx context.Context) (*http.Client, err
 }
 
 func (c *Client) Logout() error {
-	return c.tokenStore.Delete()
+	c.tokenStore.Delete()
+	c.configStore.Delete()
+	return nil
 }
 
 func (c *Client) HasCachedToken() bool {
 	return c.tokenStore.Exists()
-}
-
-func (c *Client) GetTokenInfo() (*TokenInfo, error) {
-	valid, expiry, hasRefresh, expiresIn := c.tokenStore.GetTokenInfo()
-	return &TokenInfo{
-		Valid:      valid,
-		Expiry:     expiry,
-		HasRefresh: hasRefresh,
-		ExpiresIn:  expiresIn,
-	}, nil
-}
-
-type TokenInfo struct {
-	Valid      bool
-	Expiry     time.Time
-	HasRefresh bool
-	ExpiresIn  time.Duration
 }

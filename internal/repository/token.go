@@ -3,104 +3,54 @@ package repository
 import (
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
-	"time"
 
+	"github.com/zalando/go-keyring"
 	"golang.org/x/oauth2"
 )
 
-// TokenStore is the interface the client depends on
-type TokenRepo interface {
-	Save(token *oauth2.Token) error
-	Load() (*oauth2.Token, error)
-	Delete() error
-	Exists() bool
-	GetTokenInfo() (bool, time.Time, bool, time.Duration)
-}
+const (
+	serviceName = "spotify-tui"
+	tokenKey    = "refresh_token"
+)
 
-type TokenRepository struct {
-	tokenPath string
-}
+type TokenRepository struct{}
 
-func NewTokenRepository(tokenPath string) *TokenRepository {
-	return &TokenRepository{
-		tokenPath: tokenPath,
-	}
-}
-
-type TokenData struct {
-	AccessToken  string    `json:"access_token"`
-	TokenType    string    `json:"token_type"`
-	RefreshToken  string    `json:"refresh_token"`
-	Expiry       time.Time `json:"expiry"`
+func NewTokenRepository(_ string) *TokenRepository {
+	return &TokenRepository{}
 }
 
 func (r *TokenRepository) Save(token *oauth2.Token) error {
-	dir := filepath.Dir(r.tokenPath)
-	if err := os.MkdirAll(dir, 0700); err != nil {
-		return fmt.Errorf("failed to create token directory: %w", err)
+	if token == nil {
+		return fmt.Errorf("nil token")
 	}
 
-	data := TokenData{
-		AccessToken:  token.AccessToken,
-		TokenType:    token.TokenType,
-		RefreshToken:  token.RefreshToken,
-		Expiry:       token.Expiry,
-	}
-
-	jsonData, err := json.MarshalIndent(data, "", "  ")
+	data, err := json.Marshal(token)
 	if err != nil {
 		return fmt.Errorf("failed to marshal token: %w", err)
 	}
 
-	if err := os.WriteFile(r.tokenPath, jsonData, 0600); err != nil {
-		return fmt.Errorf("failed to write token file: %w", err)
-	}
-
-	return nil
+	return keyring.Set(serviceName, tokenKey, string(data))
 }
 
 func (r *TokenRepository) Load() (*oauth2.Token, error) {
-	data, err := os.ReadFile(r.tokenPath)
+	raw, err := keyring.Get(serviceName, tokenKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read token file: %w", err)
+		return nil, err
 	}
 
-	var tokenData TokenData
-	if err := json.Unmarshal(data, &tokenData); err != nil {
-		return nil, fmt.Errorf("failed to parse token: %w", err)
+	var token oauth2.Token
+	if err := json.Unmarshal([]byte(raw), &token); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal token: %w", err)
 	}
 
-	return &oauth2.Token{
-		AccessToken:  tokenData.AccessToken,
-		TokenType:    tokenData.TokenType,
-		RefreshToken:  tokenData.RefreshToken,
-		Expiry:       tokenData.Expiry,
-	}, nil
+	return &token, nil
 }
 
 func (r *TokenRepository) Delete() error {
-	if err := os.Remove(r.tokenPath); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("failed to remove token: %w", err)
-	}
-	return nil
+	return keyring.Delete(serviceName, tokenKey)
 }
 
 func (r *TokenRepository) Exists() bool {
-	_, err := os.Stat(r.tokenPath)
+	_, err := keyring.Get(serviceName, tokenKey)
 	return err == nil
-}
-
-func (r *TokenRepository) GetTokenInfo() (bool, time.Time, bool, time.Duration) {
-	token, err := r.Load()
-	if err != nil {
-		return false, time.Time{}, false, 0
-	}
-
-	valid := token.Valid()
-	hasRefresh := token.RefreshToken != ""
-	expiresIn := time.Until(token.Expiry)
-
-	return valid, token.Expiry, hasRefresh, expiresIn
 }

@@ -29,21 +29,20 @@ var requiredScopes = []string{
 }
 
 type Authenticator interface {
-	GetAuthURL(state, callbackURL string) string
-	Exchange(ctx context.Context, code, callbackURL string) (*oauth2.Token, error)
+	GetAuthURL(state, callbackURL, codeChallenge string) string
+	Exchange(ctx context.Context, code, callbackURL, codeVerifier string) (*oauth2.Token, error)
 	TokenSource(ctx context.Context, token *oauth2.Token) oauth2.TokenSource
 }
 
-type OAuthAuthenticator struct {
+type PKCEAuthenticator struct {
 	config *oauth2.Config
 }
 
-func NewAuthenticator(clientID, clientSecret string) *OAuthAuthenticator {
-	return &OAuthAuthenticator{
+func NewAuthenticator(clientID string) *PKCEAuthenticator {
+	return &PKCEAuthenticator{
 		config: &oauth2.Config{
-			ClientID:     clientID,
-			ClientSecret: clientSecret,
-			Scopes:       requiredScopes,
+			ClientID: clientID,
+			Scopes:   requiredScopes,
 			Endpoint: oauth2.Endpoint{
 				AuthURL:  authURL,
 				TokenURL: tokenURL,
@@ -52,15 +51,33 @@ func NewAuthenticator(clientID, clientSecret string) *OAuthAuthenticator {
 	}
 }
 
-func (a *OAuthAuthenticator) GetAuthURL(state, callbackURL string) string {
-	return a.config.AuthCodeURL(state, oauth2.AccessTypeOffline, oauth2.SetAuthURLParam("redirect_uri", callbackURL))
+func (a *PKCEAuthenticator) GetAuthURL(state, callbackURL, codeChallenge string) string {
+	return a.config.AuthCodeURL(
+		state,
+		oauth2.AccessTypeOffline,
+		oauth2.SetAuthURLParam("redirect_uri", callbackURL),
+		oauth2.SetAuthURLParam("code_challenge_method", "S256"),
+		oauth2.SetAuthURLParam("code_challenge", codeChallenge),
+		oauth2.SetAuthURLParam("prompt", "consent"),
+	)
 }
 
-func (a *OAuthAuthenticator) Exchange(ctx context.Context, code, callbackURL string) (*oauth2.Token, error) {
-	return a.config.Exchange(ctx, code, oauth2.SetAuthURLParam("redirect_uri", callbackURL))
+func (a *PKCEAuthenticator) Exchange(
+	ctx context.Context,
+	code,
+	callbackURL,
+	codeVerifier string,
+) (*oauth2.Token, error) {
+
+	return a.config.Exchange(
+		ctx,
+		code,
+		oauth2.SetAuthURLParam("redirect_uri", callbackURL),
+		oauth2.SetAuthURLParam("code_verifier", codeVerifier),
+	)
 }
 
-func (a *OAuthAuthenticator) TokenSource(ctx context.Context, token *oauth2.Token) oauth2.TokenSource {
+func (a *PKCEAuthenticator) TokenSource(ctx context.Context, token *oauth2.Token) oauth2.TokenSource {
 	return a.config.TokenSource(ctx, token)
 }
 
@@ -69,5 +86,6 @@ func GenerateState() (string, error) {
 	if _, err := rand.Read(b); err != nil {
 		return "", err
 	}
-	return base64.URLEncoding.EncodeToString(b), nil
+
+	return base64.RawURLEncoding.EncodeToString(b), nil
 }

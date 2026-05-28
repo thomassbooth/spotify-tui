@@ -8,7 +8,7 @@
 
 ## Features
 - [X] Device picker — show available Spotify devices when no active device found on play, pass `device_id` as query param on the initial play call - done but, it just gets the current computer and adds it to first request - maybe i can add a devices section in the future.
-- [ ] Search — wire up actual Spotify search API call, currently just a UI skeleton
+- [X] Search — wire up actual Spotify search API call, currently just a UI skeleton
 - [ ] Pagination — playlists and tracks both capped at Spotify's default 20, need to handle `next` cursor from responses
 - [ ] First run setup flow — interactive terminal UI to guide through Spotify app creation and config instead of requiring a manual `.env`
 - [x] Remove from playlist — `x` or `backspace` on a track while viewing a playlist, calls `DELETE /playlists/{id}/tracks`

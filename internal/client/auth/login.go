@@ -15,7 +15,7 @@ type Flow interface {
 }
 
 type AuthFlow struct {
-	auth    Authenticator
+	auth Authenticator
 	timeout time.Duration
 }
 
@@ -31,15 +31,22 @@ func (f *AuthFlow) Authenticate(ctx context.Context, serverAddr string) (*oauth2
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate state: %w", err)
 	}
+	callbackURL := "http://127.0.0.1:8889/callback"
+	pkce, err := GeneratePKCE()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate PKCE: %w", err)
+	}
 
 	server := NewCallbackServer(state)
-	callbackURL, err := server.Start(serverAddr)
+	err = server.Start(serverAddr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start callback server: %w", err)
 	}
 	defer server.Stop(context.Background())
 
-	authURL := f.auth.GetAuthURL(state, callbackURL)
+	// ✅ FIX: include PKCE challenge
+	authURL := f.auth.GetAuthURL(state, callbackURL, pkce.Challenge)
+
 	fmt.Println("\n" + strings.Repeat("=", 60))
 	fmt.Println("🎵 Spotify Authorization Required")
 	fmt.Println(strings.Repeat("=", 60))
@@ -57,7 +64,12 @@ func (f *AuthFlow) Authenticate(ctx context.Context, serverAddr string) (*oauth2
 
 	fmt.Println("✓ Authorization code received, exchanging for token...")
 
-	token, err := f.auth.Exchange(context.Background(), code, callbackURL)
+	token, err := f.auth.Exchange(
+		context.Background(),
+		code,
+		callbackURL,
+		pkce.Verifier,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("token exchange failed: %w", err)
 	}

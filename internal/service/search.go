@@ -13,7 +13,3 @@ func NewSearchService(client *spotify.Client) SearchService {
 		client: client,
 	}
 }
-
-// func (s *SearchService) Search(ctx context.Context, query string) (*entities.SearchResults, error) {
-// 	return s.client.Search(ctx, query)
-// }

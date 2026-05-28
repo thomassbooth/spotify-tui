@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/thomassbooth/spotify-tui/internal/client/spotify/response"
@@ -31,6 +32,7 @@ func (s *PlaylistService) GetPlaylists() ([]entities.Playlist, error) {
 
 	resp, err := s.client.GetPlaylists(ctx)
 	if err != nil {
+		fmt.Println(err)
 		return nil, err
 	}
 

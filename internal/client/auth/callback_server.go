@@ -33,7 +33,7 @@ func NewCallbackServer(state string) *CallbackServer {
 }
 
 // Start begins listening on the specified address and returns the actual callback URL
-func (s *CallbackServer) Start(addr string) (string, error) {
+func (s *CallbackServer) Start(addr string) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/callback", s.handleCallback)
 
@@ -44,12 +44,8 @@ func (s *CallbackServer) Start(addr string) (string, error) {
 
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
-		return "", fmt.Errorf("failed to listen: %w", err)
+		return fmt.Errorf("failed to listen: %w", err)
 	}
-
-	// Use actual bound address (important when port is :0)
-	actualAddr := ln.Addr().String()
-	callbackURL := "http://" + actualAddr + "/callback"
 
 	go func() {
 		if err := s.server.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -57,7 +53,7 @@ func (s *CallbackServer) Start(addr string) (string, error) {
 		}
 	}()
 
-	return callbackURL, nil
+	return nil
 }
 
 // WaitForCode blocks until a code is received, an error occurs, or context is cancelled

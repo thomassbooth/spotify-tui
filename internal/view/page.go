@@ -25,9 +25,10 @@ type Page struct {
 	bus        *MessageBus
 	width      int
 	height     int
+	userService *service.UserService
 }
 
-func NewPage(playlistService *service.PlaylistService, playbackService *service.PlaybackService) *Page {
+func NewPage(playlistService *service.PlaylistService, playbackService *service.PlaybackService, userService *service.UserService) *Page {
 	bus := NewMessageBus()
 	sidebar := NewSidebar(bus, playlistService)
 	sidebar.Focus()
@@ -40,6 +41,7 @@ func NewPage(playlistService *service.PlaylistService, playbackService *service.
 		tracks:     tracks,
 		playbar:    playbar,
 		bus:        bus,
+		userService: userService,
 	}
 }
 
@@ -79,6 +81,10 @@ func (p *Page) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.String() == "L" {
 			cmds = append(cmds, p.bus.Publish(MsgToggleRepeat, ToggleRepeatMsg{}))
 			return p, tea.Batch(cmds...)
+		}
+		if m.String() == "esc" {
+			p.userService.Logout()
+			return p, tea.Quit
 		}
 
 		if p.navigation.Focused() {
