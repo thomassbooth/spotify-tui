@@ -19,10 +19,6 @@ import (
 
 func main() {
 	ctx := context.Background()
-
-	// -------------------------
-	// Paths
-	// -------------------------
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		log.Fatalf("Failed to get home directory: %v", err)
