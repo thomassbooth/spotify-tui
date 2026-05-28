@@ -41,6 +41,7 @@ On first launch, the browser will open to authenticate with Spotify. After autho
 
 | Key | Action |
 |---|---|
+| `esc` | Logout - deletes user client + token |
 | `Tab` | Cycle focus between panels |
 | `↑` / `↓` or `j` / `k` | Navigate list items |
 | `Enter` | Select item (playlist) |
@@ -52,7 +53,9 @@ On first launch, the browser will open to authenticate with Spotify. After autho
 | `S` | Toggle Shuffle |
 | `L` | Toggle Looping |
 
+
 ## Architecture
+
 
 ```
 cmd/spotify-tui/     Entry point
@@ -64,7 +67,16 @@ internal/
   view/              UI components (Bubble Tea)
 ```
 
+
 The codebase follows a strict layered architecture — each layer only knows about the layer below it, and dependencies are injected via interfaces defined at the consumer rather than the producer. This means each service declares only the methods it actually needs from the Spotify client, keeping things easy to test and extend.
+
+## Data Storage
+
+User tokens are stored securely in the system keychain and are removed on logout. Only non-sensitive configuration (the Spotify client details) is persisted locally in:
+
+$HOME/.spotify-tui/.config.json
+
+No secrets or sensitive data are stored in plaintext or within the application.
 
 ### Component messaging
 
