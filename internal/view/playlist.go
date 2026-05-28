@@ -128,7 +128,6 @@ func (s *PlaylistTracks) OnMessage(t MsgType, msg tea.Msg) tea.Cmd {
 		s.showingQueue = !s.showingQueue
 		s.search.active = false
 		if s.showingQueue {
-			s.tracks.Title = "Queued Songs"
 			return func() tea.Msg {
 				ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 				defer cancel()
@@ -175,6 +174,8 @@ func (s *PlaylistTracks) Update(msg tea.Msg) (Component, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tracksLoadedMsg:
+		s.Focus()
+		s.search.active = false
 		items := make([]list.Item, len(msg.tracks))
 		for i, tr := range msg.tracks {
 			artistNames := make([]string, len(tr.Artists))
@@ -203,6 +204,8 @@ func (s *PlaylistTracks) Update(msg tea.Msg) (Component, tea.Cmd) {
 		return s, nil
 
 	case queueLoadedMsg:
+		s.search.active = false
+		s.tracks.Title = "Queued Songs"
 		items := make([]list.Item, len(msg.tracks))
 		for i, tr := range msg.tracks {
 			artistNames := make([]string, len(tr.Artists))

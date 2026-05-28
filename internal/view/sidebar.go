@@ -157,6 +157,7 @@ func (s *Sidebar) Update(msg tea.Msg) (Component, tea.Cmd) {
 
 		case key.Matches(m, key.NewBinding(key.WithKeys("enter"))):
 			if sel := s.list.SelectedItem(); sel != nil {
+				s.Blur()
 				if item, ok := sel.(sidebarItem); ok && item.id != "" {
 					cmd := s.bus.Publish(MsgPlaylistSelected, PlaylistSelectedMsg{
 						ID:   item.id,
