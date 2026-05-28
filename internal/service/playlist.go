@@ -9,9 +9,10 @@ import (
 )
 
 type playlistClient interface {
-    GetPlaylists(ctx context.Context) (*response.GetPlaylistsResponse, error)
-    GetPlaylistItems(ctx context.Context, id string) (*response.GetPlaylistItemsResponse, error)
-    DeletePlaylistItem(ctx context.Context, playlistID string, trackURI string) error
+	GetPlaylists(ctx context.Context) (*response.GetPlaylistsResponse, error)
+	GetPlaylistItems(ctx context.Context, id string) (*response.GetPlaylistItemsResponse, error)
+	DeletePlaylistItem(ctx context.Context, playlistID string, trackURI string) error
+	GetSearchResults(ctx context.Context, query string) (*entities.SearchResults, error)
 }
 
 type PlaylistService struct {
@@ -103,4 +104,10 @@ func (s *PlaylistService) RemoveFromPlaylist(playlistID string, trackID string) 
 	defer cancel()
 	trackURI := "spotify:track:" + trackID
 	return s.client.DeletePlaylistItem(ctx, playlistID, trackURI)
+}
+
+func (s *PlaylistService) GetSearchResults(query string) (*entities.SearchResults, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	return s.client.GetSearchResults(ctx, query)
 }

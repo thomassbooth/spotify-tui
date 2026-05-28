@@ -62,75 +62,10 @@ func (d playlistDelegate) Render(w io.Writer, m list.Model, index int, item list
 	fmt.Fprintf(w, s.Render(selectedStr+" "+title+"\n  "+artist))
 }
 
-// --- search filter ---
-
-type searchFilter int
-
-const (
-	filterAll       searchFilter = iota
-	filterPlaylists
-	filterAlbums
-	filterSongs
-)
-
-var filterLabels = []string{"All", "Playlists", "Albums", "Songs"}
+// --- search ---
 
 type search struct {
-	active   bool
-	filter   searchFilter
-	cursor   searchFilter
-	allItems []list.Item
-}
-
-func (s *search) filterItems() []list.Item {
-	if s.filter == filterAll {
-		return s.allItems
-	}
-	want := map[searchFilter]string{
-		filterPlaylists: "playlist",
-		filterAlbums:    "album",
-		filterSongs:     "track",
-	}[s.filter]
-
-	var out []list.Item
-	for _, it := range s.allItems {
-		if pi, ok := it.(playlistItem); ok && pi.resultType == want {
-			out = append(out, it)
-		}
-	}
-	return out
-}
-
-func (s *search) renderFilterTabs() string {
-	tabs := make([]string, len(filterLabels))
-	for i, label := range filterLabels {
-		f := searchFilter(i)
-		switch {
-		case f == s.cursor && f == s.filter:
-			tabs[i] = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#1db954")).
-				Bold(true).
-				Underline(true).
-				Render("[ " + label + " ]")
-		case f == s.cursor:
-			tabs[i] = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#FAFAFA")).
-				Bold(true).
-				Render("[ " + label + " ]")
-		case f == s.filter:
-			tabs[i] = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#1db954")).
-				Underline(true).
-				Render(label)
-		default:
-			tabs[i] = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#888888")).
-				Render(label)
-		}
-	}
-	return lipgloss.NewStyle().
-		Padding(0, 0, 0, 2).
-		Render(strings.Join(tabs, "  "))
+	active bool
 }
 
 // --- PlaylistTracks ---
@@ -216,30 +151,15 @@ func (s *PlaylistTracks) OnMessage(t MsgType, msg tea.Msg) tea.Cmd {
 	}
 
 	if t == MsgSearch {
-		if msgSearchQuery, ok := msg.(SearchResultsMsg); ok {
-			s.search.active = true
-			s.search.filter = filterAll
-			s.search.cursor = filterAll
-			s.tracks.Title = fmt.Sprintf("Results: %q", msgSearchQuery.Query)
-
-			items := make([]list.Item, 0, len(msgSearchQuery.Tracks)+len(msgSearchQuery.Albums)+len(msgSearchQuery.Playlists))
-			for _, tr := range msgSearchQuery.Tracks {
-				names := make([]string, len(tr.Artists))
-				for j, a := range tr.Artists {
-					names[j] = a.Name
+		if msg, ok := msg.(SearchResultsMsg); ok {
+			query := msg.Query
+			return func() tea.Msg {
+				results, err := s.playlistService.GetSearchResults(query)
+				if err != nil {
+					return errMsg{Err: err}
 				}
-				items = append(items, playlistItem{name: tr.Name, artists: names, id: tr.ID, resultType: "track"})
+				return searchCompleteMsg{results: results, query: query}
 			}
-			for _, al := range msgSearchQuery.Albums {
-				items = append(items, playlistItem{name: al.Name, artists: []string{al.Name}, id: al.ID, resultType: "album"})
-			}
-			for _, pl := range msgSearchQuery.Playlists {
-				items = append(items, playlistItem{name: pl.Name, id: pl.ID, resultType: "playlist"})
-			}
-
-			s.search.allItems = items
-			s.tracks.SetItems(items)
-			return nil
 		}
 	}
 
@@ -262,6 +182,22 @@ func (s *PlaylistTracks) Update(msg tea.Msg) (Component, tea.Cmd) {
 				artistNames[j] = a.Name
 			}
 			items[i] = playlistItem{name: tr.Name, artists: artistNames, id: tr.ID}
+		}
+		s.tracks.SetItems(items)
+		return s, nil
+
+	case searchCompleteMsg:
+		s.Focus()
+		s.search.active = true
+		s.tracks.Title = fmt.Sprintf("Results: %q", msg.query)
+
+		items := make([]list.Item, 0, len(msg.results.Tracks))
+		for _, tr := range msg.results.Tracks {
+			names := make([]string, len(tr.Artists))
+			for j, a := range tr.Artists {
+				names[j] = a.Name
+			}
+			items = append(items, playlistItem{name: tr.Name, artists: names, id: tr.ID, resultType: "track"})
 		}
 		s.tracks.SetItems(items)
 		return s, nil
@@ -295,24 +231,7 @@ func (s *PlaylistTracks) Update(msg tea.Msg) (Component, tea.Cmd) {
 			s.tracks.Select(-1)
 			return s, nil
 
-		case key.Matches(msg, key.NewBinding(key.WithKeys("left", "h"))):
-			if s.search.active {
-				if s.search.cursor > 0 {
-					s.search.cursor--
-				}
-				return s, nil
-			}
-
-		case key.Matches(msg, key.NewBinding(key.WithKeys("right", "l"))):
-			if s.search.active {
-				if int(s.search.cursor) < len(filterLabels)-1 {
-					s.search.cursor++
-				}
-				return s, nil
-			}
-
 		case key.Matches(msg, key.NewBinding(key.WithKeys("X"))):
-			// only available when viewing a playlist, not queue or search
 			if !s.showingQueue && !s.search.active && s.lastPlaylist.ID != "" {
 				if sel := s.tracks.SelectedItem(); sel != nil {
 					if item, ok := sel.(playlistItem); ok {
@@ -323,7 +242,6 @@ func (s *PlaylistTracks) Update(msg tea.Msg) (Component, tea.Cmd) {
 								return errMsg{Err: err}
 							}
 							s.bus.Publish(MsgActionText, ActionTextMsg{Text: fmt.Sprintf("%s removed from %s", item.name, s.lastPlaylist.Name)})
-							// reload the playlist to reflect the removal
 							tracks, err := s.playlistService.GetPlaylistTracks(playlistID)
 							if err != nil {
 								return errMsg{Err: err}
@@ -335,11 +253,6 @@ func (s *PlaylistTracks) Update(msg tea.Msg) (Component, tea.Cmd) {
 			}
 
 		case key.Matches(msg, key.NewBinding(key.WithKeys("enter"))):
-			if s.search.active && s.search.cursor != s.search.filter {
-				s.search.filter = s.search.cursor
-				s.tracks.SetItems(s.search.filterItems())
-				return s, nil
-			}
 			if len(s.tracks.Items()) > 0 {
 				selectedTrack := s.tracks.SelectedItem()
 				if selectedTrack != nil {
@@ -381,24 +294,6 @@ func (s *PlaylistTracks) View(width, height int) string {
 
 	if s.Focused() {
 		border = border.BorderForeground(lipgloss.Color("#1db954"))
-	}
-
-	if s.search.active {
-		tabBarHeight := 1
-		s.tracks.SetSize(width, height-tabBarHeight)
-		listView := s.tracks.View()
-
-		firstNL := strings.Index(listView, "\n")
-		var inner string
-		if firstNL == -1 {
-			inner = lipgloss.JoinHorizontal(lipgloss.Left, listView, s.search.renderFilterTabs())
-		} else {
-			titleLine := listView[:firstNL]
-			rest := listView[firstNL+1:]
-			inner = lipgloss.JoinHorizontal(lipgloss.Left, titleLine, s.search.renderFilterTabs())
-			inner = lipgloss.JoinVertical(lipgloss.Left, inner, rest)
-		}
-		return border.Render(inner)
 	}
 
 	s.tracks.SetSize(width, height)

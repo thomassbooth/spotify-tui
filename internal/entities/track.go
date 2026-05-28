@@ -6,6 +6,7 @@ type Track struct {
 	DurationMs int      `json:"duration_ms"`
 	Artists    []Artist `json:"artists"`
 	Album      Album    `json:"album"`
+	URI        string   `json:"uri"`
 }
 
 type Artist struct {
@@ -17,6 +18,7 @@ type Artist struct {
 type Album struct {
 	ID     string  `json:"id"`
 	Name   string  `json:"name"`
+	URI    string  `json:"uri"`
 	Images []Image `json:"images"`
 }
 

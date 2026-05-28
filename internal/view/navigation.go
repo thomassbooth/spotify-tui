@@ -78,6 +78,7 @@ func (n *Navigation) Update(msg tea.Msg) (Component, tea.Cmd) {
 				if query != "" {
 					n.searching = false
 					n.searchInput.Blur()
+					n.Blur()
 					cmd = n.bus.Publish(MsgSearch, SearchResultsMsg{Query: query})
 					return n, cmd
 				}

@@ -63,6 +63,7 @@ type PlaylistSelectedMsg struct {
 type SearchMsg struct {
 	Query string
 }
+
 type TrackSelectedMsg struct {
 	ID   string
 	Name string
@@ -95,6 +96,10 @@ type tracksLoadedMsg struct {
 	tracks []entities.Track
 }
 
+type searchCompleteMsg struct {
+	results *entities.SearchResults
+	query   string
+}
 type queueLoadedMsg struct {
 	tracks []entities.Track
 }
