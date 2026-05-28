@@ -16,7 +16,7 @@ A terminal-based Spotify client built in Go with the [Bubble Tea](https://github
 ## Prerequisites
 
 - Go 1.25+
-- A [Spotify Developer Application](https://developer.spotify.com/dashboard) with Client ID and Client Secret
+- A [Spotify Developer Application](https://developer.spotify.com/dashboard) with Client ID
 
 ## Setup
 
@@ -40,7 +40,8 @@ xattr -d com.apple.quarantine spotify-tui-mac-arm64
 make run
 ```
 
-On first launch, the browser will open to authenticate with Spotify. After authorization, the token is cached at `~/.spotify-tui/token.json`.
+On first launch, the browser will open to authenticate with Spotify. After authorization, the token is stored in your keychain + client id in:
+`~/.spotify-tui/.config.json`
 
 ## Controls
 
