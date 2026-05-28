@@ -24,6 +24,18 @@ A terminal-based Spotify client built in Go with the [Bubble Tea](https://github
 
 2. Run the application:
 
+3. Extras
+
+### If you are mac based this is for you
+
+Since i dont have an apple developer license youll need to give approval to run on macbook.
+
+```
+xattr -d com.apple.quarantine spotify-tui-mac-arm64
+```
+
+### Optional
+
 ```bash
 make run
 ```
