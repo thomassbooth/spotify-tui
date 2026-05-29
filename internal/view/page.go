@@ -30,7 +30,7 @@ type Page struct {
 
 func NewPage(playlistService *service.PlaylistService, playbackService *service.PlaybackService, userService *service.UserService) *Page {
 	bus := NewMessageBus()
-	sidebar := NewSidebar(bus, playlistService)
+	sidebar := NewSidebar(bus, playlistService, userService)
 	sidebar.Focus()
 	tracks := NewPlaylistTracks(bus, playlistService, playbackService)
 	playbar := NewPlaybar(bus, playbackService)
@@ -46,6 +46,7 @@ func NewPage(playlistService *service.PlaylistService, playbackService *service.
 }
 
 func (p *Page) Init() tea.Cmd {
+	
 	return tea.Batch(
 		p.playbar.(*Playbar).Init(),
 		p.sidebar.(*Sidebar).Init(),

@@ -8,10 +8,16 @@ A terminal-based Spotify client built in Go with the [Bubble Tea](https://github
 
 ## Features
 
-- Browse and view your Spotify playlists
+- Browse and view your own Spotify playlists
 - View tracks within playlists
 - Keyboard-driven navigation
 - Persistent OAuth token storage
+
+
+## DISCLAIMER
+
+- Since spotify changed their playlist access, you can only view YOUR OWN playlists. Thanks spotify...
+- Playlists you cannot access are greyed out and have a padlock next to them.
 
 ## Prerequisites
 

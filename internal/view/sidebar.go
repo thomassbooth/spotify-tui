@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/thomassbooth/spotify-tui/internal/entities"
 	"github.com/thomassbooth/spotify-tui/internal/service"
 )
 
@@ -20,12 +21,10 @@ var defaultKeyMap = struct {
 	ShiftTab: key.NewBinding(key.WithKeys("shift+tab")),
 }
 
-// ---------------------------------------------------------------------
-// 1. Item type with Name and OwnerName
-// ---------------------------------------------------------------------
 type sidebarItem struct {
 	name      string
 	ownerName string
+	ownerID   string
 	plType    string
 	id        string
 	uri       string
@@ -35,15 +34,12 @@ func (i sidebarItem) Title() string       { return i.name }
 func (i sidebarItem) Description() string { return i.ownerName }
 func (i sidebarItem) FilterValue() string { return i.name }
 
-// ---------------------------------------------------------------------
-// 2. Custom Delegate to render name and owner
-// ---------------------------------------------------------------------
 type sidebarDelegate struct {
 	list.DefaultDelegate
+	currentUserID string
 }
 
-func (d sidebarDelegate) Height() int { return 2 }
-
+func (d sidebarDelegate) Height() int  { return 2 }
 func (d sidebarDelegate) Spacing() int { return 1 }
 
 func (d sidebarDelegate) Render(w io.Writer, m list.Model, index int, item list.Item) {
@@ -53,60 +49,68 @@ func (d sidebarDelegate) Render(w io.Writer, m list.Model, index int, item list.
 	}
 
 	var (
-		title       = i.name
-		owner       = i.ownerName
-		plType      = i.plType
 		isSelected  = index == m.Index()
+		isOwned     = d.currentUserID != "" && i.ownerID == d.currentUserID
 		s           = lipgloss.NewStyle().Padding(0, 0, 0, 2)
 		selectedStr = " "
+		lock        = ""
 	)
+
+	if !isOwned {
+		lock = " 🔒"
+	}
+
+	title  := i.name + lock
+	owner  := i.ownerName
+	plType := i.plType
 
 	if isSelected {
 		selectedStr = ">"
-		title = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#1db954")).
-			Bold(true).
-			Render(title)
-		owner = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#1db954")).
-			Render(owner)
-		plType = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#1db954")).
-			Render(plType)
+		titleColor := lipgloss.Color("#1db954")
+		if !isOwned {
+			titleColor = lipgloss.Color("#888888")
+		}
+		title = lipgloss.NewStyle().Foreground(titleColor).Bold(true).Render(title)
+		owner = lipgloss.NewStyle().Foreground(lipgloss.Color("#1db954")).Render(owner)
+		plType = lipgloss.NewStyle().Foreground(lipgloss.Color("#1db954")).Render(plType)
 	} else {
-		title = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FAFAFA")).
-			Render(title)
-		owner = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#626262")).
-			Render(owner)
-		plType = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#626262")).
-			Render(plType)
-
+		titleColor := lipgloss.Color("#FAFAFA")
+		if !isOwned {
+			titleColor = lipgloss.Color("#626262")
+		}
+		title = lipgloss.NewStyle().Foreground(titleColor).Render(title)
+		owner = lipgloss.NewStyle().Foreground(lipgloss.Color("#626262")).Render(owner)
+		plType = lipgloss.NewStyle().Foreground(lipgloss.Color("#626262")).Render(plType)
 	}
+
 	fmt.Fprintf(w, s.Render(selectedStr+" "+title+"\n  "+plType+" - "+owner))
 }
 
-// ---------------------------------------------------------------------
-// 3. Sidebar component
-// ---------------------------------------------------------------------
 type Sidebar struct {
 	list            list.Model
 	focused         bool
 	bus             *MessageBus
 	playlistService *service.PlaylistService
+	userService     *service.UserService
+	currentUser     *entities.User
+	delegate        *sidebarDelegate
 }
 
-// NewSidebar creates a ready-to-use sidebar
-func NewSidebar(bus *MessageBus, playlistService *service.PlaylistService) *Sidebar {
-	delegate := sidebarDelegate{list.NewDefaultDelegate()}
+func NewSidebar(bus *MessageBus, playlistService *service.PlaylistService, userService *service.UserService) *Sidebar {
+	delegate := &sidebarDelegate{DefaultDelegate: list.NewDefaultDelegate()}
 	l := list.New([]list.Item{}, delegate, 22, 0)
 	l.Title = "Playlists"
 	l.SetShowHelp(false)
 	l.SetShowStatusBar(false)
 
-	return &Sidebar{list: l, focused: false, bus: bus, playlistService: playlistService}
+	return &Sidebar{
+		list:            l,
+		focused:         false,
+		bus:             bus,
+		playlistService: playlistService,
+		userService:     userService,
+		delegate:        delegate,
+	}
 }
 
 func (s *Sidebar) Init() tea.Cmd {
@@ -115,7 +119,11 @@ func (s *Sidebar) Init() tea.Cmd {
 		if err != nil {
 			return errMsg{Err: err}
 		}
-		return playlistsLoadedMsg{playlists: playlists}
+		user, err := s.userService.GetCurrentUser()
+		if err != nil {
+			return errMsg{Err: err}
+		}
+		return playlistsLoadedMsg{playlists: playlists, user: *user}
 	}
 }
 
@@ -128,11 +136,15 @@ func (s *Sidebar) Update(msg tea.Msg) (Component, tea.Cmd) {
 
 	switch m := msg.(type) {
 	case playlistsLoadedMsg:
+		s.currentUser = &m.user
+		s.delegate.currentUserID = m.user.ID
+
 		items := make([]list.Item, len(m.playlists))
 		for i, p := range m.playlists {
 			items[i] = sidebarItem{
 				name:      p.Name,
 				ownerName: p.OwnerName,
+				ownerID:   p.OwnerID,
 				plType:    p.Type,
 				id:        p.ID,
 				uri:       p.URI,
@@ -157,8 +169,12 @@ func (s *Sidebar) Update(msg tea.Msg) (Component, tea.Cmd) {
 
 		case key.Matches(m, key.NewBinding(key.WithKeys("enter"))):
 			if sel := s.list.SelectedItem(); sel != nil {
-				s.Blur()
 				if item, ok := sel.(sidebarItem); ok && item.id != "" {
+					// block navigation into playlists the user doesn't own
+					if s.currentUser != nil && item.ownerID != s.currentUser.ID {
+						return s, nil
+					}
+					s.Blur()
 					cmd := s.bus.Publish(MsgPlaylistSelected, PlaylistSelectedMsg{
 						ID:   item.id,
 						Name: item.name,

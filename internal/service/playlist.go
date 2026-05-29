@@ -19,6 +19,7 @@ type PlaylistService struct {
     client playlistClient
 }
 
+
 func NewPlaylistService(client playlistClient) PlaylistService {
 	return PlaylistService{
 		client: client,
@@ -42,6 +43,7 @@ func (s *PlaylistService) GetPlaylists() ([]entities.Playlist, error) {
 			Name:        item.Name,
 			Description: item.Description,
 			OwnerName:   item.Owner.DisplayName,
+			OwnerID:     item.Owner.ID,
 			TrackCount:  item.Tracks.Total,
 			URI:         item.URI,
 			Type:        item.Type,

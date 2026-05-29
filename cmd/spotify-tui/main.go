@@ -73,9 +73,9 @@ func main() {
 
 	spotifyClient := spotify.NewClient(httpClient)
 
-	playlistService := service.NewPlaylistService(spotifyClient)
+	userService := service.NewUserService(tokenRepo, configRepo, spotifyClient)
+	playlistService := service.NewPlaylistService(spotifyClient,)
 	playbackService := service.NewPlaybackService(spotifyClient)
-	userService := service.NewUserService(tokenRepo, configRepo)
 
 	p := tea.NewProgram(view.NewPage(&playlistService, &playbackService, &userService))
 	if _, err := p.Run(); err != nil {

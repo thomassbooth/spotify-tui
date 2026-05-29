@@ -10,11 +10,11 @@ import (
 
 func (client *Client) GetPlaylists(ctx context.Context) (*response.GetPlaylistsResponse, error) {
 	// Get raw JSON data
-	data, err := client.Get(ctx, "/me/playlists", nil) // Note: /playlists not /playlist
+	data, err := client.Get(ctx, "/me/playlists", nil) 
 	if err != nil {
 		return nil, err
 	}
-
+	
 	// Unmarshal into response struct
 	var response response.GetPlaylistsResponse
 	if err := json.Unmarshal(data, &response); err != nil {
@@ -32,9 +32,9 @@ func (client *Client) GetPlaylistItems(ctx context.Context, playlistID string) (
 	if err != nil {
 		return nil, err
 	}
-
 	var resp response.GetPlaylistItemsResponse
 	if err := json.Unmarshal(data, &resp); err != nil {
+		fmt.Println("error with json")
 		return nil, err
 	}
 
