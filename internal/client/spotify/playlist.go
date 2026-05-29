@@ -25,10 +25,10 @@ func (client *Client) GetPlaylists(ctx context.Context) (*response.GetPlaylistsR
 }
 
 func (client *Client) GetPlaylistItems(ctx context.Context, playlistID string) (*response.GetPlaylistItemsResponse, error) {
-	endpoint := fmt.Sprintf("/playlists/%s/tracks", playlistID)
+	endpoint := fmt.Sprintf("/playlists/%s/items", playlistID)
 
 	data, err := client.Get(ctx, endpoint, nil)
-
+	
 	if err != nil {
 		return nil, err
 	}

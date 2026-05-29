@@ -67,7 +67,6 @@ func (c *Client) do(ctx context.Context, method, path string, params, body inter
 	if err != nil {
 		return nil, fmt.Errorf("error reading response body: %w", err)
 	}
-
 	if resp.StatusCode >= 400 {
 		return nil, fmt.Errorf("spotify API error %d: %s", resp.StatusCode, respBody)
 	}

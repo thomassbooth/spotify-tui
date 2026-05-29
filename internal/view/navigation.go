@@ -1,8 +1,6 @@
 package view
 
 import (
-	"fmt"
-
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -59,7 +57,6 @@ func (n *Navigation) Update(msg tea.Msg) (Component, tea.Cmd) {
         return n, textinput.Blink
 		
 	case ActionTextMsg:
-		fmt.Println("message recieved")
 		n.alertText = msg.Text
 		return n, nil
 

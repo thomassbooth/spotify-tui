@@ -32,7 +32,7 @@ type GetPlaylistItemsResponse struct {
 
 type PlaylistTrackItem struct {
 	AddedAt string `json:"added_at"`
-	Track   Track  `json:"track"`
+	Track   Track  `json:"item"`
 }
 
 type Track struct {
