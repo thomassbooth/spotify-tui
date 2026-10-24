@@ -103,16 +103,9 @@ func (s *PlaybackService) ensureLocalDevice(ctx context.Context) (string, error)
 }
 
 func (s *PlaybackService) Seek(ctx context.Context, positionMs int) error {
-	_, err := s.client.Put(ctx, "/me/player/seek", nil, map[string]interface{}{
+	_, err := s.client.Put(ctx, "/me/player/seek", map[string]interface{}{
 		"position_ms": positionMs,
-	})
-	return err
-}
-
-func (s *PlaybackService) ToggleRepeat(ctx context.Context, state string) error {
-	_, err := s.client.Put(ctx, "/me/player/repeat", nil, map[string]interface{}{
-		"state": state,
-	})
+	}, nil)
 	return err
 }
 
@@ -126,7 +119,20 @@ func (s *PlaybackService) PausePlayback() error {
 func (s *PlaybackService) ResumePlayback() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	_, err := s.client.Put(ctx, "/me/player/play", nil, nil)
+
+	if s.deviceID == "" {
+		deviceID, err := s.ensureLocalDevice(ctx)
+		if err != nil {
+			return err
+		}
+		s.deviceID = deviceID
+	}
+
+	var params map[string]interface{}
+	if s.deviceID != "" {
+		params = map[string]interface{}{"device_id": s.deviceID}
+	}
+	_, err := s.client.Put(ctx, "/me/player/play", params, nil)
 	return err
 }
 
@@ -159,15 +165,6 @@ func (s *PlaybackService) ToggleRepeatPlayback(state string) error {
 
 	_, err := s.client.Put(ctx, "/me/player/repeat", map[string]interface{}{
 		"state": state,
-	}, nil)
-	return err
-}
-
-func (s *PlaybackService) SetVolume(percent int) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-	_, err := s.client.Put(ctx, "/me/player/volume",map[string]interface{}{
-		"volume_percent": percent,
 	}, nil)
 	return err
 }

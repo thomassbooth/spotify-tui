@@ -272,7 +272,9 @@ func TestPausePlayback_PropagatesError(t *testing.T) {
 }
 
 func TestResumePlayback_CallsCorrectEndpoint(t *testing.T) {
-	mock := &mockPlaybackClient{}
+	mock := &mockPlaybackClient{
+		playbackState: &entities.PlaybackState{IsPlaying: true},
+	}
 	svc := newService(mock)
 
 	if err := svc.ResumePlayback(); err != nil {
@@ -345,32 +347,7 @@ func TestToggleRepeatPlayback_SendsState(t *testing.T) {
 	}
 }
 
-func TestToggleRepeat_WithContext_CallsCorrectEndpoint(t *testing.T) {
-	mock := &mockPlaybackClient{}
-	svc := newService(mock)
-
-	err := svc.ToggleRepeat(context.Background(), "off")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if mock.putPath != "/me/player/repeat" {
-		t.Errorf("expected /me/player/repeat, got %q", mock.putPath)
-	}
-}
-
 // --- Volume ---
-
-func TestSetVolume_CallsCorrectEndpoint(t *testing.T) {
-	mock := &mockPlaybackClient{}
-	svc := newService(mock)
-
-	if err := svc.SetVolume(60); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if mock.putPath != "/me/player/volume" {
-		t.Errorf("expected /me/player/volume, got %q", mock.putPath)
-	}
-}
 
 func TestVolumeUp_IncrementsCorrectly(t *testing.T) {
 	mock := &mockPlaybackClient{}
@@ -469,9 +446,9 @@ func TestSeek_CallsCorrectEndpointWithPosition(t *testing.T) {
 	if mock.putPath != "/me/player/seek" {
 		t.Errorf("expected /me/player/seek, got %q", mock.putPath)
 	}
-	body, ok := mock.putBody.(map[string]interface{})
-	if !ok || body["position_ms"] != 30000 {
-		t.Errorf("expected position_ms=30000 in body, got %v", mock.putBody)
+	params, ok := mock.putParams.(map[string]interface{})
+	if !ok || params["position_ms"] != 30000 {
+		t.Errorf("expected position_ms=30000 in params, got %v", mock.putParams)
 	}
 }
 

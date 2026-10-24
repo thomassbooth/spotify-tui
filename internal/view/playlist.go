@@ -71,14 +71,14 @@ type search struct {
 // --- PlaylistTracks ---
 
 type PlaylistTracks struct {
-	tracks          list.Model
-	focused         bool
-	bus             *MessageBus
-	playlistService *service.PlaylistService
-	playbackService *service.PlaybackService
-	showingQueue    bool
-	lastPlaylist    PlaylistSelectedMsg
-	search          search
+	tracks               list.Model
+	focused              bool
+	bus                  *MessageBus
+	playlistService      *service.PlaylistService
+	playbackService      *service.PlaybackService
+	showingQueue         bool
+	lastPlaylist         PlaylistSelectedMsg
+	search               search
 }
 
 func NewPlaylistTracks(bus *MessageBus, playlistService *service.PlaylistService, playbackService *service.PlaybackService) *PlaylistTracks {
@@ -235,7 +235,7 @@ func (s *PlaylistTracks) Update(msg tea.Msg) (Component, tea.Cmd) {
 			return s, nil
 
 		case key.Matches(msg, key.NewBinding(key.WithKeys("X"))):
-			if !s.showingQueue && !s.search.active && s.lastPlaylist.ID != "" {
+			if !s.showingQueue && !s.search.active && s.lastPlaylist.ID != "" && s.lastPlaylist.IsOwned {
 				if sel := s.tracks.SelectedItem(); sel != nil {
 					if item, ok := sel.(playlistItem); ok {
 						playlistID := s.lastPlaylist.ID

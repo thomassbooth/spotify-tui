@@ -170,15 +170,13 @@ func (s *Sidebar) Update(msg tea.Msg) (Component, tea.Cmd) {
 		case key.Matches(m, key.NewBinding(key.WithKeys("enter"))):
 			if sel := s.list.SelectedItem(); sel != nil {
 				if item, ok := sel.(sidebarItem); ok && item.id != "" {
-					// block navigation into playlists the user doesn't own
-					if s.currentUser != nil && item.ownerID != s.currentUser.ID {
-						return s, nil
-					}
+					isOwned := s.currentUser != nil && item.ownerID == s.currentUser.ID
 					s.Blur()
 					cmd := s.bus.Publish(MsgPlaylistSelected, PlaylistSelectedMsg{
-						ID:   item.id,
-						Name: item.name,
-						URI:  item.uri,
+						ID:      item.id,
+						Name:    item.name,
+						URI:     item.uri,
+						IsOwned: isOwned,
 					})
 					return s, cmd
 				}

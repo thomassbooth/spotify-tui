@@ -55,9 +55,10 @@ type TabChangedMsg struct {
 
 type FocusSearchMsg struct{}
 type PlaylistSelectedMsg struct {
-	ID   string
-	Name string
-	URI  string
+	ID      string
+	Name    string
+	URI     string
+	IsOwned bool
 }
 
 type SearchMsg struct {

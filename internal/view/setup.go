@@ -94,13 +94,13 @@ func (s *Setup) View() string {
 		Render(fmt.Sprintf(
 			"1. Go to %s\n2. Create an app\n3. Add %s as a Redirect URI\n4. Enter your credentials below",
 			"https://developer.spotify.com/dashboard",
-			"http://localhost:8889/callback",
+			"http://127.0.0.1:8889/callback",
 		))
 
 	sb.WriteString(title + "\n")
 	sb.WriteString(instructions + "\n\n")
 
-	labels := []string{"Client ID", "Client Secret"}
+	labels := []string{"Client ID"}
 	for i, input := range s.inputs {
 		label := lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#FAFAFA")).

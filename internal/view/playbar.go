@@ -55,6 +55,9 @@ func (p *Playbar) Update(msg tea.Msg) (Component, tea.Cmd) {
 			case "p", "h", "left":
 				return p, p.previousCmd()
 			case "up":
+				if p.playbackState == nil {
+					return p, nil
+				}
 				vol, err := p.playbackService.VolumeUp(p.playbackState.Device.VolumePercent, 10)
 				if err != nil {
 					return p, nil
@@ -62,6 +65,9 @@ func (p *Playbar) Update(msg tea.Msg) (Component, tea.Cmd) {
 				p.playbackState.Device.VolumePercent = vol
 				return p, nil
 			case "down":
+				if p.playbackState == nil {
+					return p, nil
+				}
 				vol, err := p.playbackService.VolumeDown(p.playbackState.Device.VolumePercent, 10)
 				if err != nil {
 					return p, nil
@@ -89,12 +95,18 @@ func (p *Playbar) Update(msg tea.Msg) (Component, tea.Cmd) {
 			return p, nil
 		}
 
-		if p.elapsedMs >= state.Track.DurationMs {
+		p.mu.Lock()
+		elapsed := p.elapsedMs
+		p.mu.Unlock()
+
+		if elapsed >= state.Track.DurationMs {
 			p.ticking = false
 			return p, p.fetchPlayback()
 		}
 
+		p.mu.Lock()
 		p.elapsedMs += 1000
+		p.mu.Unlock()
 		return p, p.tickCmd()
 
 	case syncPollMsg:
@@ -233,8 +245,11 @@ func (p *Playbar) OnMessage(t MsgType, msg tea.Msg) tea.Cmd {
 
 	if t == MsgToggleRepeat {
 		return func() tea.Msg {
-			
-			err := p.playbackService.ToggleRepeatPlayback(p.getNextRepeatState())
+			p.mu.Lock()
+			nextState := p.getNextRepeatState()
+			p.mu.Unlock()
+
+			err := p.playbackService.ToggleRepeatPlayback(nextState)
 			if err != nil {
 				return errMsg{Err: err}
 			}
@@ -246,6 +261,9 @@ func (p *Playbar) OnMessage(t MsgType, msg tea.Msg) tea.Cmd {
 }
 
 func (p *Playbar) getNextRepeatState() string {
+	if p.playbackState == nil {
+		return "context"
+	}
 	switch p.playbackState.RepeatState {
 	case "off":
 		return "context"

@@ -83,8 +83,7 @@ func (p *Page) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, p.bus.Publish(MsgToggleRepeat, ToggleRepeatMsg{}))
 			return p, tea.Batch(cmds...)
 		}
-		if m.String() == "esc" {
-			p.userService.Logout()
+		if m.String() == "esc" && !p.navigation.Focused() {
 			return p, tea.Quit
 		}
 
@@ -103,8 +102,9 @@ func (p *Page) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	
 	case errMsg:
-		// TODO: surface errors to the user (status bar, modal, etc.)
-		_ = m
+		if m.Err != nil {
+			cmds = append(cmds, p.bus.Publish(MsgActionText, ActionTextMsg{Text: "Error: " + m.Err.Error()}))
+		}
 
 	case tea.WindowSizeMsg:
 		p.width, p.height = m.Width, m.Height

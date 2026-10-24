@@ -34,7 +34,6 @@ func (client *Client) GetPlaylistItems(ctx context.Context, playlistID string) (
 	}
 	var resp response.GetPlaylistItemsResponse
 	if err := json.Unmarshal(data, &resp); err != nil {
-		fmt.Println("error with json")
 		return nil, err
 	}
 
