@@ -67,8 +67,7 @@ func (m *mockPlaybackClient) PutVolume(_ context.Context, percent int) error {
 // --- Helpers ---
 
 func newService(client *mockPlaybackClient) *PlaybackService {
-	svc := NewPlaybackService(client)
-	return &svc
+	return NewPlaybackService(NewSpotifyBackend(client))
 }
 
 // --- GetCurrentPlayback ---

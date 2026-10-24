@@ -121,6 +121,10 @@ type schedulePollMsg struct {
 }
 type playlistsLoadedMsg struct {
 	playlists []entities.Playlist
-	user 		entities.User
+	user      entities.User
+}
+
+type librespotEventMsg struct {
+	eventType string
 }
 

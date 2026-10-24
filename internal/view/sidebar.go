@@ -83,7 +83,7 @@ func (d sidebarDelegate) Render(w io.Writer, m list.Model, index int, item list.
 		plType = lipgloss.NewStyle().Foreground(lipgloss.Color("#626262")).Render(plType)
 	}
 
-	fmt.Fprintf(w, s.Render(selectedStr+" "+title+"\n  "+plType+" - "+owner))
+	fmt.Fprint(w, s.Render(selectedStr+" "+title+"\n  "+plType+" - "+owner))
 }
 
 type Sidebar struct {

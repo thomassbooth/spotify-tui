@@ -6,6 +6,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/thomassbooth/spotify-tui/internal/assets"
+	librespot "github.com/thomassbooth/spotify-tui/internal/client/librespot"
 	"github.com/thomassbooth/spotify-tui/internal/service"
 )
 
@@ -28,19 +29,19 @@ type Page struct {
 	userService *service.UserService
 }
 
-func NewPage(playlistService *service.PlaylistService, playbackService *service.PlaybackService, userService *service.UserService) *Page {
+func NewPage(playlistService *service.PlaylistService, playbackService *service.PlaybackService, userService *service.UserService, events *librespot.EventConn) *Page {
 	bus := NewMessageBus()
 	sidebar := NewSidebar(bus, playlistService, userService)
 	sidebar.Focus()
 	tracks := NewPlaylistTracks(bus, playlistService, playbackService)
-	playbar := NewPlaybar(bus, playbackService)
+	playbar := NewPlaybar(bus, playbackService, events)
 	nav := NewNavigation(bus)
 	return &Page{
-		sidebar:    sidebar,
-		navigation: nav,
-		tracks:     tracks,
-		playbar:    playbar,
-		bus:        bus,
+		sidebar:     sidebar,
+		navigation:  nav,
+		tracks:      tracks,
+		playbar:     playbar,
+		bus:         bus,
 		userService: userService,
 	}
 }

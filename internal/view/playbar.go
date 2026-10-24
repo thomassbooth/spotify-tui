@@ -8,6 +8,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	librespot "github.com/thomassbooth/spotify-tui/internal/client/librespot"
 	"github.com/thomassbooth/spotify-tui/internal/entities"
 	"github.com/thomassbooth/spotify-tui/internal/service"
 )
@@ -21,12 +22,14 @@ type Playbar struct {
 	elapsedMs       int
 	mu              sync.Mutex
 	ticking         bool
+	events          *librespot.EventConn
 }
 
-func NewPlaybar(bus *MessageBus, playbackService *service.PlaybackService) *Playbar {
+func NewPlaybar(bus *MessageBus, playbackService *service.PlaybackService, events *librespot.EventConn) *Playbar {
 	p := &Playbar{
 		bus:             bus,
 		playbackService: playbackService,
+		events:          events,
 	}
 
 	bus.Subscribe(MsgPlaybackUpdate, p)
@@ -38,7 +41,21 @@ func NewPlaybar(bus *MessageBus, playbackService *service.PlaybackService) *Play
 }
 
 func (p *Playbar) Init() tea.Cmd {
+	if p.events != nil {
+		return tea.Batch(p.fetchPlayback(), p.nextEventCmd())
+	}
 	return tea.Batch(p.fetchPlayback(), startSyncPoll(p.playbackService))
+}
+
+func (p *Playbar) nextEventCmd() tea.Cmd {
+	return func() tea.Msg {
+		event, err := p.events.ReadEvent()
+		if err != nil {
+			// connection lost — fall back to polling
+			return syncPollMsg{state: nil}
+		}
+		return librespotEventMsg{eventType: event.Type}
+	}
 }
 
 func (p *Playbar) Update(msg tea.Msg) (Component, tea.Cmd) {
@@ -156,6 +173,19 @@ func (p *Playbar) Update(msg tea.Msg) (Component, tea.Cmd) {
 			return p, p.tickCmd()
 		}
 		return p, nil
+
+	case librespotEventMsg:
+		var cmds []tea.Cmd
+		if m.eventType == "kStopped" {
+			p.mu.Lock()
+			p.playbackState = nil
+			p.ticking = false
+			p.mu.Unlock()
+		} else {
+			cmds = append(cmds, p.fetchPlayback())
+		}
+		cmds = append(cmds, p.nextEventCmd())
+		return p, tea.Batch(cmds...)
 	}
 
 	return p, nil

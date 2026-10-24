@@ -59,7 +59,7 @@ func (d playlistDelegate) Render(w io.Writer, m list.Model, index int, item list
 		artist = lipgloss.NewStyle().Foreground(lipgloss.Color("#888888")).Render(artist)
 	}
 
-	fmt.Fprintf(w, s.Render(selectedStr+" "+title+"\n  "+artist))
+	fmt.Fprint(w, s.Render(selectedStr+" "+title+"\n  "+artist))
 }
 
 // --- search ---
