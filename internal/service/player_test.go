@@ -236,14 +236,15 @@ func TestPlay_CachesDeviceIDOnSecondCall(t *testing.T) {
 		playbackErr: errors.New("no playback"),
 		devices:     []entities.Device{{ID: "pc-id", Type: "Computer"}},
 	}
-	svc := newService(mock)
+	backend := NewSpotifyBackend(mock)
+	svc := NewPlaybackService(backend)
 
 	_ = svc.Play("spotify:track:abc", "")
 	_ = svc.Play("spotify:track:def", "")
 
-	// deviceID should be cached; devices should only be fetched once (during first call)
-	if svc.deviceID != "pc-id" {
-		t.Errorf("expected cached deviceID pc-id, got %q", svc.deviceID)
+	// cachedDeviceID lives on SpotifyBackend now
+	if backend.cachedDeviceID != "pc-id" {
+		t.Errorf("expected cached deviceID pc-id, got %q", backend.cachedDeviceID)
 	}
 }
 

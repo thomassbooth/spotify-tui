@@ -96,6 +96,31 @@ func (c *Client) SetShuffle(ctx context.Context, value bool) error {
 	return c.doJSON(ctx, http.MethodPut, "/player/shuffle_context", BoolRequest{Value: value})
 }
 
+// GetAuthCode returns the device auth URL when go-librespot is waiting for first-time
+// authentication, or nil if already authenticated (or not using device auth).
+func (c *Client) GetAuthCode(ctx context.Context) (*DeviceAuthResponse, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.addr+"/auth/code", nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, nil
+	}
+	var r DeviceAuthResponse
+	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
+		return nil, err
+	}
+	if r.Link == "" {
+		return nil, nil
+	}
+	return &r, nil
+}
+
 // GetCurrentPlayback converts go-librespot status to entities.PlaybackState.
 func (c *Client) GetCurrentPlayback(ctx context.Context) (*entities.PlaybackState, error) {
 	status, err := c.GetStatus(ctx)

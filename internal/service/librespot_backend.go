@@ -39,8 +39,7 @@ func (b *LibrespotBackend) GetDevices(ctx context.Context) ([]entities.Device, e
 	}}, nil
 }
 
-// Play starts playback. deviceID is ignored — librespot manages its own device.
-func (b *LibrespotBackend) Play(ctx context.Context, trackURI, contextURI, _ string) error {
+func (b *LibrespotBackend) Play(ctx context.Context, trackURI, contextURI string) error {
 	req := librespot.PlayRequest{}
 	if contextURI != "" {
 		req.URI = contextURI
@@ -55,8 +54,7 @@ func (b *LibrespotBackend) Pause(ctx context.Context) error {
 	return b.client.Pause(ctx)
 }
 
-// Resume restarts playback. deviceID is ignored.
-func (b *LibrespotBackend) Resume(ctx context.Context, _ string) error {
+func (b *LibrespotBackend) Resume(ctx context.Context) error {
 	return b.client.Resume(ctx)
 }
 

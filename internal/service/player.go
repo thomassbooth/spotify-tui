@@ -15,11 +15,9 @@ type PlayerBackend interface {
 	GetCurrentPlayback(ctx context.Context) (*entities.PlaybackState, error)
 	GetQueue(ctx context.Context) ([]entities.Track, error)
 	GetDevices(ctx context.Context) ([]entities.Device, error)
-	// Play starts playback. deviceID is empty for backends that manage their own device.
-	Play(ctx context.Context, trackURI, contextURI, deviceID string) error
+	Play(ctx context.Context, trackURI, contextURI string) error
 	Pause(ctx context.Context) error
-	// Resume restarts playback. deviceID is empty for backends that manage their own device.
-	Resume(ctx context.Context, deviceID string) error
+	Resume(ctx context.Context) error
 	Next(ctx context.Context) error
 	Previous(ctx context.Context) error
 	Seek(ctx context.Context, positionMs int) error
@@ -39,8 +37,10 @@ type spotifyClient interface {
 }
 
 // SpotifyBackend implements PlayerBackend using the Spotify Web API.
+// It handles device selection internally — callers don't need to know about devices.
 type SpotifyBackend struct {
-	client spotifyClient
+	client          spotifyClient
+	cachedDeviceID  string
 }
 
 func NewSpotifyBackend(client spotifyClient) *SpotifyBackend {
@@ -59,7 +59,12 @@ func (b *SpotifyBackend) GetDevices(ctx context.Context) ([]entities.Device, err
 	return b.client.GetDevices(ctx)
 }
 
-func (b *SpotifyBackend) Play(ctx context.Context, trackURI, contextURI, deviceID string) error {
+func (b *SpotifyBackend) Play(ctx context.Context, trackURI, contextURI string) error {
+	deviceID, err := b.ensureDevice(ctx)
+	if err != nil {
+		return err
+	}
+
 	var params map[string]interface{}
 	if deviceID != "" {
 		params = map[string]interface{}{"device_id": deviceID}
@@ -79,7 +84,7 @@ func (b *SpotifyBackend) Play(ctx context.Context, trackURI, contextURI, deviceI
 		}
 	}
 
-	_, err := b.client.Put(ctx, "/me/player/play", params, body)
+	_, err = b.client.Put(ctx, "/me/player/play", params, body)
 	return err
 }
 
@@ -88,12 +93,16 @@ func (b *SpotifyBackend) Pause(ctx context.Context) error {
 	return err
 }
 
-func (b *SpotifyBackend) Resume(ctx context.Context, deviceID string) error {
+func (b *SpotifyBackend) Resume(ctx context.Context) error {
+	deviceID, err := b.ensureDevice(ctx)
+	if err != nil {
+		return err
+	}
 	var params map[string]interface{}
 	if deviceID != "" {
 		params = map[string]interface{}{"device_id": deviceID}
 	}
-	_, err := b.client.Put(ctx, "/me/player/play", params, nil)
+	_, err = b.client.Put(ctx, "/me/player/play", params, nil)
 	return err
 }
 
@@ -132,11 +141,42 @@ func (b *SpotifyBackend) ToggleRepeat(ctx context.Context, state string) error {
 	return err
 }
 
+// ensureDevice returns a device ID to target, or "" if playback is already active.
+// Caches the result so device lookup only happens once.
+func (b *SpotifyBackend) ensureDevice(ctx context.Context) (string, error) {
+	state, err := b.client.GetCurrentPlayback(ctx)
+	if err == nil && state != nil && state.IsPlaying {
+		return "", nil
+	}
+
+	if b.cachedDeviceID != "" {
+		return b.cachedDeviceID, nil
+	}
+
+	devices, err := b.client.GetDevices(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	for _, d := range devices {
+		if d.Type == "Computer" {
+			b.cachedDeviceID = d.ID
+			return d.ID, nil
+		}
+	}
+
+	if len(devices) > 0 {
+		b.cachedDeviceID = devices[0].ID
+		return devices[0].ID, nil
+	}
+
+	return "", fmt.Errorf("no available devices found — open Spotify on this machine")
+}
+
 // PlaybackService wraps a PlayerBackend and provides high-level playback operations
-// for the view layer. It owns device selection (Spotify-specific fallback logic).
+// for the view layer.
 type PlaybackService struct {
-	backend  PlayerBackend
-	deviceID string
+	backend PlayerBackend
 }
 
 func NewPlaybackService(backend PlayerBackend) *PlaybackService {
@@ -156,16 +196,7 @@ func (s *PlaybackService) GetCurrentPlaybackState() (*entities.PlaybackState, er
 func (s *PlaybackService) Play(trackURI, contextURI string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-
-	if s.deviceID == "" {
-		id, err := s.ensureLocalDevice(ctx)
-		if err != nil {
-			return err
-		}
-		s.deviceID = id
-	}
-
-	return s.backend.Play(ctx, trackURI, contextURI, s.deviceID)
+	return s.backend.Play(ctx, trackURI, contextURI)
 }
 
 func (s *PlaybackService) PausePlayback() error {
@@ -177,16 +208,7 @@ func (s *PlaybackService) PausePlayback() error {
 func (s *PlaybackService) ResumePlayback() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-
-	if s.deviceID == "" {
-		id, err := s.ensureLocalDevice(ctx)
-		if err != nil {
-			return err
-		}
-		s.deviceID = id
-	}
-
-	return s.backend.Resume(ctx, s.deviceID)
+	return s.backend.Resume(ctx)
 }
 
 func (s *PlaybackService) NextTrack() error {
@@ -251,29 +273,4 @@ func (s *PlaybackService) GetQueue(ctx context.Context) ([]entities.Track, error
 
 func (s *PlaybackService) GetDevices(ctx context.Context) ([]entities.Device, error) {
 	return s.backend.GetDevices(ctx)
-}
-
-// ensureLocalDevice returns a device ID to target, or "" if already active.
-func (s *PlaybackService) ensureLocalDevice(ctx context.Context) (string, error) {
-	state, err := s.backend.GetCurrentPlayback(ctx)
-	if err == nil && state != nil && state.IsPlaying {
-		return "", nil
-	}
-
-	devices, err := s.backend.GetDevices(ctx)
-	if err != nil {
-		return "", err
-	}
-
-	for _, d := range devices {
-		if d.Type == "Computer" {
-			return d.ID, nil
-		}
-	}
-
-	if len(devices) > 0 {
-		return devices[0].ID, nil
-	}
-
-	return "", fmt.Errorf("no available devices found — open Spotify on this machine")
 }

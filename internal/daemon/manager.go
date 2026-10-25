@@ -15,12 +15,17 @@ type Manager struct {
 }
 
 // candidatePaths returns locations to search for the go-librespot binary.
+// The binary is named "daemon" when installed via `go install .../cmd/daemon`.
 func candidatePaths() []string {
 	home, _ := os.UserHomeDir()
+	gobin := filepath.Join(home, "go", "bin")
+	localbin := filepath.Join(home, ".local", "bin")
 	return []string{
 		"go-librespot",
-		filepath.Join(home, ".local", "bin", "go-librespot"),
-		filepath.Join(home, "go", "bin", "go-librespot"),
+		filepath.Join(gobin, "go-librespot"),
+		filepath.Join(gobin, "daemon"),
+		filepath.Join(localbin, "go-librespot"),
+		filepath.Join(localbin, "daemon"),
 		"./go-librespot",
 	}
 }
